@@ -14,7 +14,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 
-	waWeb "go.mau.fi/whatsmeow/proto/waWeb"
+	waWeb "github.com/PakaiWA/whatsmeow/proto/waWeb"
 )
 
 const (
@@ -74,7 +74,7 @@ const file_waGroupHistory_WAWebProtobufsGroupHistory_proto_rawDesc = "" +
 	"\n" +
 	"/waGroupHistory/WAWebProtobufsGroupHistory.proto\x12\x1aWAWebProtobufsGroupHistory\x1a\x1dwaWeb/WAWebProtobufsWeb.proto\"M\n" +
 	"\fGroupHistory\x12=\n" +
-	"\bmessages\x18\x01 \x03(\v2!.WAWebProtobufsWeb.WebMessageInfoR\bmessagesB*Z(go.mau.fi/whatsmeow/proto/waGroupHistory"
+	"\bmessages\x18\x01 \x03(\v2!.WAWebProtobufsWeb.WebMessageInfoR\bmessagesB*Z(github.com/PakaiWA/whatsmeow/proto/waGroupHistory"
 
 var (
 	file_waGroupHistory_WAWebProtobufsGroupHistory_proto_rawDescOnce sync.Once

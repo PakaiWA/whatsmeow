@@ -1010,7 +1010,7 @@ const file_waStatusAttributions_WAStatusAttributions_proto_rawDesc = "" +
 	"\n" +
 	"AI_CREATED\x10\a\x12\v\n" +
 	"\aLAYOUTS\x10\bB\x11\n" +
-	"\x0fattributionDataB0Z.go.mau.fi/whatsmeow/proto/waStatusAttributions"
+	"\x0fattributionDataB0Z.github.com/PakaiWA/whatsmeow/proto/waStatusAttributions"
 
 var (
 	file_waStatusAttributions_WAStatusAttributions_proto_rawDescOnce sync.Once
