@@ -7,16 +7,14 @@
 package WAWebProtobufSyncAction
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-
 	WAWebProtobufsDeviceCapabilities "github.com/PakaiWA/whatsmeow/proto/WAWebProtobufsDeviceCapabilities"
 	waChatLockSettings "github.com/PakaiWA/whatsmeow/proto/waChatLockSettings"
 	waCommon "github.com/PakaiWA/whatsmeow/proto/waCommon"
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
