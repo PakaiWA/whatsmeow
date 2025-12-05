@@ -4,14 +4,15 @@
 // 	protoc        v6.33.1
 // source: waDeviceCapabilities/WAWebProtobufsDeviceCapabilities.proto
 
-package WAWebProtobufsDeviceCapabilities
+package waDeviceCapabilities
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -489,7 +490,7 @@ const file_waDeviceCapabilities_WAWebProtobufsDeviceCapabilities_proto_rawDesc =
 	"\x14ChatLockSupportLevel\x12\b\n" +
 	"\x04NONE\x10\x00\x12\v\n" +
 	"\aMINIMAL\x10\x01\x12\b\n" +
-	"\x04FULL\x10\x02BEZCgithub.com/PakaiWA/whatsmeow/proto/WAWebProtobufsDeviceCapabilities"
+	"\x04FULL\x10\x02B9Z7github.com/PakaiWA/whatsmeow/proto/waDeviceCapabilities"
 
 var (
 	file_waDeviceCapabilities_WAWebProtobufsDeviceCapabilities_proto_rawDescOnce sync.Once

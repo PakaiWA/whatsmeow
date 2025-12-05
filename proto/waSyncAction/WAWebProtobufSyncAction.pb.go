@@ -4,17 +4,19 @@
 // 	protoc        v6.33.1
 // source: waSyncAction/WAWebProtobufSyncAction.proto
 
-package WAWebProtobufSyncAction
+package waSyncAction
 
 import (
-	WAWebProtobufsDeviceCapabilities "github.com/PakaiWA/whatsmeow/proto/WAWebProtobufsDeviceCapabilities"
-	waChatLockSettings "github.com/PakaiWA/whatsmeow/proto/waChatLockSettings"
-	waCommon "github.com/PakaiWA/whatsmeow/proto/waCommon"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+
+	waChatLockSettings "github.com/PakaiWA/whatsmeow/proto/waChatLockSettings"
+	waCommon "github.com/PakaiWA/whatsmeow/proto/waCommon"
+	waDeviceCapabilities "github.com/PakaiWA/whatsmeow/proto/waDeviceCapabilities"
 )
 
 const (
@@ -3038,7 +3040,7 @@ type SyncActionValue struct {
 	ChatLockSettings                                       *waChatLockSettings.ChatLockSettings                    `protobuf:"bytes,51,opt,name=chatLockSettings" json:"chatLockSettings,omitempty"`
 	WamoUserIdentifierAction                               *WamoUserIdentifierAction                               `protobuf:"bytes,52,opt,name=wamoUserIdentifierAction" json:"wamoUserIdentifierAction,omitempty"`
 	PrivacySettingDisableLinkPreviewsAction                *PrivacySettingDisableLinkPreviewsAction                `protobuf:"bytes,53,opt,name=privacySettingDisableLinkPreviewsAction" json:"privacySettingDisableLinkPreviewsAction,omitempty"`
-	DeviceCapabilities                                     *WAWebProtobufsDeviceCapabilities.DeviceCapabilities    `protobuf:"bytes,54,opt,name=deviceCapabilities" json:"deviceCapabilities,omitempty"`
+	DeviceCapabilities                                     *waDeviceCapabilities.DeviceCapabilities                `protobuf:"bytes,54,opt,name=deviceCapabilities" json:"deviceCapabilities,omitempty"`
 	NoteEditAction                                         *NoteEditAction                                         `protobuf:"bytes,55,opt,name=noteEditAction" json:"noteEditAction,omitempty"`
 	FavoritesAction                                        *FavoritesAction                                        `protobuf:"bytes,56,opt,name=favoritesAction" json:"favoritesAction,omitempty"`
 	MerchantPaymentPartnerAction                           *MerchantPaymentPartnerAction                           `protobuf:"bytes,57,opt,name=merchantPaymentPartnerAction" json:"merchantPaymentPartnerAction,omitempty"`
@@ -3423,7 +3425,7 @@ func (x *SyncActionValue) GetPrivacySettingDisableLinkPreviewsAction() *PrivacyS
 	return nil
 }
 
-func (x *SyncActionValue) GetDeviceCapabilities() *WAWebProtobufsDeviceCapabilities.DeviceCapabilities {
+func (x *SyncActionValue) GetDeviceCapabilities() *waDeviceCapabilities.DeviceCapabilities {
 	if x != nil {
 		return x.DeviceCapabilities
 	}
@@ -7252,7 +7254,7 @@ const file_waSyncAction_WAWebProtobufSyncAction_proto_rawDesc = "" +
 	"\x14SETTINGS_SYNC_ACTION\x10N\x12\x11\n" +
 	"\fSHARE_OWN_PN\x10\x91N\x12\x1e\n" +
 	"\x19BUSINESS_BROADCAST_ACTION\x10\x92N\x12\x1c\n" +
-	"\x17AI_THREAD_DELETE_ACTION\x10\x93NB<Z:github.com/PakaiWA/whatsmeow/proto/WAWebProtobufSyncAction"
+	"\x17AI_THREAD_DELETE_ACTION\x10\x93NB1Z/github.com/PakaiWA/whatsmeow/proto/waSyncAction"
 
 var (
 	file_waSyncAction_WAWebProtobufSyncAction_proto_rawDescOnce sync.Once
@@ -7371,7 +7373,7 @@ var file_waSyncAction_WAWebProtobufSyncAction_proto_goTypes = []any{
 	(*CallLogRecord_ParticipantInfo)(nil),                              // 99: WAWebProtobufSyncAction.CallLogRecord.ParticipantInfo
 	(*FavoritesAction_Favorite)(nil),                                   // 100: WAWebProtobufSyncAction.FavoritesAction.Favorite
 	(*waChatLockSettings.ChatLockSettings)(nil),                        // 101: WAWebProtobufsChatLockSettings.ChatLockSettings
-	(*WAWebProtobufsDeviceCapabilities.DeviceCapabilities)(nil),        // 102: WAWebProtobufsDeviceCapabilities.DeviceCapabilities
+	(*waDeviceCapabilities.DeviceCapabilities)(nil),                    // 102: WAWebProtobufsDeviceCapabilities.DeviceCapabilities
 	(*waCommon.MessageKey)(nil),                                        // 103: WACommon.MessageKey
 }
 var file_waSyncAction_WAWebProtobufSyncAction_proto_depIdxs = []int32{

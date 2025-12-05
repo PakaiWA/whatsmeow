@@ -7,12 +7,14 @@
 package waSyncdSnapshotRecovery
 
 import (
-	WAWebProtobufSyncAction "github.com/PakaiWA/whatsmeow/proto/WAWebProtobufSyncAction"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+
+	waSyncAction "github.com/PakaiWA/whatsmeow/proto/waSyncAction"
 )
 
 const (
@@ -91,10 +93,10 @@ func (x *SyncdSnapshotRecovery) GetCollectionLthash() []byte {
 }
 
 type SyncdPlainTextRecord struct {
-	state         protoimpl.MessageState                  `protogen:"open.v1"`
-	Value         *WAWebProtobufSyncAction.SyncActionData `protobuf:"bytes,1,opt,name=value" json:"value,omitempty"`
-	KeyID         []byte                                  `protobuf:"bytes,2,opt,name=keyID" json:"keyID,omitempty"`
-	Mac           []byte                                  `protobuf:"bytes,3,opt,name=mac" json:"mac,omitempty"`
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Value         *waSyncAction.SyncActionData `protobuf:"bytes,1,opt,name=value" json:"value,omitempty"`
+	KeyID         []byte                       `protobuf:"bytes,2,opt,name=keyID" json:"keyID,omitempty"`
+	Mac           []byte                       `protobuf:"bytes,3,opt,name=mac" json:"mac,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -129,7 +131,7 @@ func (*SyncdPlainTextRecord) Descriptor() ([]byte, []int) {
 	return file_waSyncdSnapshotRecovery_WAWebProtobufsSyncdSnapshotRecovery_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SyncdPlainTextRecord) GetValue() *WAWebProtobufSyncAction.SyncActionData {
+func (x *SyncdPlainTextRecord) GetValue() *waSyncAction.SyncActionData {
 	if x != nil {
 		return x.Value
 	}
@@ -225,10 +227,10 @@ func file_waSyncdSnapshotRecovery_WAWebProtobufsSyncdSnapshotRecovery_proto_rawD
 
 var file_waSyncdSnapshotRecovery_WAWebProtobufsSyncdSnapshotRecovery_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_waSyncdSnapshotRecovery_WAWebProtobufsSyncdSnapshotRecovery_proto_goTypes = []any{
-	(*SyncdSnapshotRecovery)(nil),                  // 0: WAWebProtobufsSyncdSnapshotRecovery.SyncdSnapshotRecovery
-	(*SyncdPlainTextRecord)(nil),                   // 1: WAWebProtobufsSyncdSnapshotRecovery.SyncdPlainTextRecord
-	(*SyncdVersion)(nil),                           // 2: WAWebProtobufsSyncdSnapshotRecovery.SyncdVersion
-	(*WAWebProtobufSyncAction.SyncActionData)(nil), // 3: WAWebProtobufSyncAction.SyncActionData
+	(*SyncdSnapshotRecovery)(nil),       // 0: WAWebProtobufsSyncdSnapshotRecovery.SyncdSnapshotRecovery
+	(*SyncdPlainTextRecord)(nil),        // 1: WAWebProtobufsSyncdSnapshotRecovery.SyncdPlainTextRecord
+	(*SyncdVersion)(nil),                // 2: WAWebProtobufsSyncdSnapshotRecovery.SyncdVersion
+	(*waSyncAction.SyncActionData)(nil), // 3: WAWebProtobufSyncAction.SyncActionData
 }
 var file_waSyncdSnapshotRecovery_WAWebProtobufsSyncdSnapshotRecovery_proto_depIdxs = []int32{
 	2, // 0: WAWebProtobufsSyncdSnapshotRecovery.SyncdSnapshotRecovery.version:type_name -> WAWebProtobufsSyncdSnapshotRecovery.SyncdVersion
