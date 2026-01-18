@@ -52,12 +52,12 @@ jobs:
         run: |
           sudo ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
           yy=$(date +%y)
-          m=$(date +%m)
-          d=$(date +%d)
+          m=$(date +%-m)
+          d=$(date +%-d)
           HH=$(date +%H)
           MM=$(date +%M)
 
-          tag="v0.${yy}.${m}+${d}${HH}${MM}"
+          tag="v0.${yy}.${m}-${d}${HH}${MM}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Tag yang akan dibuat: $tag"
 
