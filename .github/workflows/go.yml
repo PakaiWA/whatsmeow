@@ -41,21 +41,14 @@ jobs:
             exit 1
           fi
 
-      - name: Create Pull Request (no direct push to main)
+      - name: Create Pull Request (via BOT token)
         uses: peter-evans/create-pull-request@v6
         with:
+          token: ${{ secrets.PAKAIWA_ACTION_BOT }}
           title: "chore: migrate whatsmeow import path"
           commit-message: "chore: replace go.mau.fi/whatsmeow with github.com/PakaiWA/whatsmeow"
           branch: chore/migrate-whatsmeow
           delete-branch: true
-          body: |
-            ## Migrasi Import Path Whatsmeow
-
-            - Replace `go.mau.fi/whatsmeow` → `github.com/PakaiWA/whatsmeow`
-            - Update `go.mod` (replace directive)
-            - `go mod tidy`
-
-            Workflow ini **tidak push ke main** dan aman untuk branch protection.
 
   build:
     runs-on: ubuntu-latest
