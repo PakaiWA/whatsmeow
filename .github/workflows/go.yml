@@ -1,45 +1,73 @@
 name: Go and Auto Tag (v0.yy.m-dhhmm)
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 env:
   GOTOOLCHAIN: local
 
 jobs:
-  build:
+  migrate-whatsmeow:
+    name: Migrate Whatsmeow Import Path (PR)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        go-version: ["1.24", "1.25"]
-    name: Build ${{ matrix.go-version == '1.25' && '(latest)' || '(old)' }}
 
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Auto replace whatsmeow import path
         run: |
           set -e
           find . -type f -name "*.go" -print0 \
             | xargs -0 sed -i.bak 's|go.mau.fi/whatsmeow|github.com/PakaiWA/whatsmeow|g' || true
-
           find . -type f -name "*.bak" -delete
 
-      - name: Commit replace if any
+      - name: Ensure go.mod replace (optional)
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          if git status --porcelain | grep .; then
-            git add -A
-            git commit -m "chore: replace go.mau.fi/whatsmeow with github.com/PakaiWA/whatsmeow"
-            git push
-          else
-            echo "No changes to commit"
+          if [ -f go.mod ]; then
+            go mod edit -replace=go.mau.fi/whatsmeow=github.com/PakaiWA/whatsmeow@latest || true
+            go mod tidy || true
           fi
+
+      - name: Validate no old import left
+        run: |
+          if grep -R "go.mau.fi/whatsmeow" .; then
+            echo "ERROR: old import path still exists"
+            exit 1
+          fi
+
+      - name: Create Pull Request (no direct push to main)
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "chore: migrate whatsmeow import path"
+          commit-message: "chore: replace go.mau.fi/whatsmeow with github.com/PakaiWA/whatsmeow"
+          branch: chore/migrate-whatsmeow
+          delete-branch: true
+          body: |
+            ## Migrasi Import Path Whatsmeow
+
+            - Replace `go.mau.fi/whatsmeow` → `github.com/PakaiWA/whatsmeow`
+            - Update `go.mod` (replace directive)
+            - `go mod tidy`
+
+            Workflow ini **tidak push ke main** dan aman untuk branch protection.
+
+  build:
+    runs-on: ubuntu-latest
+    needs: migrate-whatsmeow
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ["1.24", "1.25"]
+    name: Build ${{ matrix.go-version == '1.25' && '(latest)' || '(old)' }}
+
+    steps:
+      - uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v6
