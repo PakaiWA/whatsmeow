@@ -1,6 +1,6 @@
 name: Go and Auto Tag (v0.yy.m-dhhmm)
 
-on: [push, pull_request, workflow_dispatch]
+on: [push, workflow_dispatch]
 
 env:
   GOTOOLCHAIN: local
