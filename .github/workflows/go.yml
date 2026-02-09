@@ -14,6 +14,9 @@ jobs:
       contents: write
       pull-requests: write
 
+    outputs:
+      pr_created: ${{ steps.pr.outputs.pull-request-number != '' }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,6 +42,7 @@ jobs:
           fi
 
       - name: Create Pull Request (via BOT token)
+        id: pr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.PAKAIWA_ACTION_BOT }}
@@ -47,9 +51,16 @@ jobs:
           branch: chore/migrate-whatsmeow
           delete-branch: true
 
+      - name: Stop pipeline if PR was created
+        if: steps.pr.outputs.pull-request-number != ''
+        run: |
+          echo "PR dibuat (#${{ steps.pr.outputs.pull-request-number }}). Hentikan pipeline."
+          exit 1
+
   build:
     runs-on: ubuntu-latest
     needs: migrate-whatsmeow
+    if: needs.migrate-whatsmeow.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +92,7 @@ jobs:
   create-tag:
     runs-on: ubuntu-latest
     needs: build
+    if: needs.build.result == 'success'
     env:
       TZ: Asia/Jakarta
     permissions:
@@ -112,7 +124,6 @@ jobs:
           git fetch --tags --quiet
           if git rev-parse -q --verify "refs/tags/${{ steps.ver.outputs.tag }}" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Tag sudah ada, tidak perlu membuat ulang."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
