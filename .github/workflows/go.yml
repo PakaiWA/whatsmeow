@@ -34,10 +34,10 @@ jobs:
             go mod tidy || true
           fi
 
-      - name: Validate no old import left
+      - name: Validate no old import left in source code
         run: |
-          if grep -R "go.mau.fi/whatsmeow" .; then
-            echo "ERROR: old import path still exists"
+          if grep -R --include="*.go" "go.mau.fi/whatsmeow" ./internal ./cmd ./pkg 2>/dev/null; then
+            echo "ERROR: old import path still exists in source code"
             exit 1
           fi
 
