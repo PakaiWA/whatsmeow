@@ -20,24 +20,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Auto replace whatsmeow import path
+      - name: Replace whatsmeow import path (only .go files)
         run: |
           set -e
-          find . -type f -name "*.go" -print0 \
-            | xargs -0 sed -i.bak 's|go.mau.fi/whatsmeow|github.com/PakaiWA/whatsmeow|g' || true
+          find . -type f -name "*.go" \
+            -not -path "./vendor/*" \
+            -not -path "./.github/*" \
+            -print0 \
+          | xargs -0 sed -i.bak 's|go.mau.fi/whatsmeow|github.com/PakaiWA/whatsmeow|g' || true
+
           find . -type f -name "*.bak" -delete
 
-      - name: Ensure go.mod replace (optional)
+      - name: Validate no old import left in source code (.go only)
         run: |
-          if [ -f go.mod ]; then
-            go mod edit -replace=go.mau.fi/whatsmeow=github.com/PakaiWA/whatsmeow@latest || true
-            go mod tidy || true
-          fi
-
-      - name: Validate no old import left in source code
-        run: |
-          if grep -R --include="*.go" "go.mau.fi/whatsmeow" ./internal ./cmd ./pkg 2>/dev/null; then
-            echo "ERROR: old import path still exists in source code"
+          if grep -R --include="*.go" "go.mau.fi/whatsmeow" .; then
+            echo "ERROR: old import path still exists in Go source files"
             exit 1
           fi
 
