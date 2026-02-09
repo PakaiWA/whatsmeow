@@ -27,3 +27,5 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 )
+
+replace go.mau.fi/whatsmeow => github.com/PakaiWA/whatsmeow v0.0.1
