@@ -30,13 +30,13 @@ jobs:
             -not -path "./vendor/*" \
             -not -path "./.github/*" \
             -print0 \
-          | xargs -0 sed -i.bak 's|github.com/PakaiWA/whatsmeow|github.com/PakaiWA/whatsmeow|g' || true
+          | xargs -0 sed -i.bak 's|go.mau.fi/whatsmeow|github.com/PakaiWA/whatsmeow|g' || true
 
           find . -type f -name "*.bak" -delete
 
       - name: Validate no old import left in source code (.go only)
         run: |
-          if grep -R --include="*.go" "github.com/PakaiWA/whatsmeow" .; then
+          if grep -R --include="*.go" "go.mau.fi/whatsmeow" .; then
             echo "ERROR: old import path still exists in Go source files"
             exit 1
           fi
@@ -47,7 +47,7 @@ jobs:
         with:
           token: ${{ secrets.PAKAIWA_ACTION_BOT }}
           title: "chore: migrate whatsmeow import path"
-          commit-message: "chore: replace github.com/PakaiWA/whatsmeow with github.com/PakaiWA/whatsmeow"
+          commit-message: "chore: replace go.mau.fi/whatsmeow with github.com/PakaiWA/whatsmeow"
           branch: chore/migrate-whatsmeow
           delete-branch: true
 
