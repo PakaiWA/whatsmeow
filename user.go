@@ -746,7 +746,7 @@ func parseDeviceList(user types.JID, deviceNode waBinary.Node) []types.JID {
 	for _, device := range children {
 		deviceID, ok := device.AttrGetter().GetInt64("id", true)
 		isHosted := device.AttrGetter().Bool("is_hosted")
-		if device.Tag != "device" || !ok {
+		if device.Tag != "device" || !ok || deviceID < 0 || deviceID > 65535 {
 			continue
 		}
 		user.Device = uint16(deviceID)
@@ -770,7 +770,7 @@ func parseFBDeviceList(user types.JID, deviceList waBinary.Node) deviceCache {
 	devices := make([]types.JID, 0, len(children))
 	for _, device := range children {
 		deviceID, ok := device.AttrGetter().GetInt64("id", true)
-		if device.Tag != "device" || !ok {
+		if device.Tag != "device" || !ok || deviceID < 0 || deviceID > 65535 {
 			continue
 		}
 		user.Device = uint16(deviceID)
