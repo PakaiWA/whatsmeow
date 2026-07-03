@@ -11,8 +11,8 @@ require (
 	github.com/rs/zerolog v1.34.0
 	go.mau.fi/libsignal v0.2.1
 	go.mau.fi/util v0.9.6
-	golang.org/x/crypto v0.48.0
-	golang.org/x/net v0.50.0
+	golang.org/x/crypto v0.51.0
+	golang.org/x/net v0.55.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -24,6 +24,6 @@ require (
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.27 // indirect
 	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )
