@@ -27,14 +27,14 @@ type WAVersionContainer [3]uint32
 
 // ParseVersion parses a version string (three dot-separated numbers) into a WAVersionContainer.
 func ParseVersion(version string) (parsed WAVersionContainer, err error) {
-	var part1, part2, part3 int
+	var part1, part2, part3 uint64
 	if parts := strings.Split(version, "."); len(parts) != 3 {
 		err = fmt.Errorf("'%s' doesn't contain three dot-separated parts", version)
-	} else if part1, err = strconv.Atoi(parts[0]); err != nil {
+	} else if part1, err = strconv.ParseUint(parts[0], 10, 32); err != nil {
 		err = fmt.Errorf("first part of '%s' is not a number: %w", version, err)
-	} else if part2, err = strconv.Atoi(parts[1]); err != nil {
+	} else if part2, err = strconv.ParseUint(parts[1], 10, 32); err != nil {
 		err = fmt.Errorf("second part of '%s' is not a number: %w", version, err)
-	} else if part3, err = strconv.Atoi(parts[2]); err != nil {
+	} else if part3, err = strconv.ParseUint(parts[2], 10, 32); err != nil {
 		err = fmt.Errorf("third part of '%s' is not a number: %w", version, err)
 	} else {
 		parsed = WAVersionContainer{uint32(part1), uint32(part2), uint32(part3)}
