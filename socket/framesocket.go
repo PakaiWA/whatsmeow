@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -133,8 +134,12 @@ func (fs *FrameSocket) SendFrame(data []byte) error {
 	}
 
 	headerLength := len(fs.Header)
+	if headerLength < 0 || dataLength < 0 || headerLength > math.MaxInt-FrameLengthSize-dataLength {
+		return fmt.Errorf("%w (got %d bytes, max %d bytes)", ErrFrameTooLarge, len(data), FrameMaxSize)
+	}
 	// Whole frame is header + 3 bytes for length + data
-	wholeFrame := make([]byte, headerLength+FrameLengthSize+dataLength)
+	totalLength := headerLength + FrameLengthSize + dataLength
+	wholeFrame := make([]byte, totalLength)
 
 	// Copy the header if it's there
 	if fs.Header != nil {
