@@ -178,7 +178,7 @@ func ParseJID(jid string) (JID, error) {
 		}
 		parsedJID.RawAgent = uint8(agent)
 		if len(parts) == 2 {
-			device, err := strconv.Atoi(parts[1])
+			device, err := strconv.ParseUint(parts[1], 10, 16)
 			if err != nil {
 				return parsedJID, fmt.Errorf("failed to parse device from JID: %w", err)
 			}
@@ -190,7 +190,7 @@ func ParseJID(jid string) (JID, error) {
 			return parsedJID, fmt.Errorf("unexpected number of colons in JID")
 		}
 		parsedJID.User = parts[0]
-		device, err := strconv.Atoi(parts[1])
+		device, err := strconv.ParseUint(parts[1], 10, 16)
 		if err != nil {
 			return parsedJID, fmt.Errorf("failed to parse device from JID: %w", err)
 		}
