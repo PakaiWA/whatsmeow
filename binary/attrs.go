@@ -8,7 +8,6 @@ package binary
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
@@ -154,8 +153,10 @@ func (au *AttrUtility) String(key string) string {
 
 func (au *AttrUtility) OptionalInt(key string) int {
 	val, _ := au.GetInt64(key, false)
-	if val > maxInt || val < minInt {
-		au.Errors = append(au.Errors, fmt.Errorf("value in attribute '%s' (%d) is out of int range [%d, %d]", key, val, math.MinInt, math.MaxInt))
+	maxInt := int64(^uint(0) >> 1)
+	minInt := -maxInt - 1
+	if val < minInt || val > maxInt {
+		au.Errors = append(au.Errors, fmt.Errorf("int value in attribute '%s' out of range: %d", key, val))
 		return 0
 	}
 	return int(val)
@@ -163,8 +164,10 @@ func (au *AttrUtility) OptionalInt(key string) int {
 
 func (au *AttrUtility) Int(key string) int {
 	val, _ := au.GetInt64(key, true)
-	if val > maxInt || val < minInt {
-		au.Errors = append(au.Errors, fmt.Errorf("value in attribute '%s' (%d) is out of int range [%d, %d]", key, val, math.MinInt, math.MaxInt))
+	maxInt := int64(^uint(0) >> 1)
+	minInt := -maxInt - 1
+	if val < minInt || val > maxInt {
+		au.Errors = append(au.Errors, fmt.Errorf("int value in attribute '%s' out of range: %d", key, val))
 		return 0
 	}
 	return int(val)
