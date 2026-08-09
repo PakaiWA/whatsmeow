@@ -149,6 +149,9 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 		cbc.CryptBlocks(ciphertext[aes.BlockSize:], plaintextStart)
 		cbc.CryptBlocks(ciphertext[aes.BlockSize+len(plaintextStart):], lastBlock)
 	} else {
+		if paddedLen > math.MaxInt-10 {
+			return nil, errors.New("plaintext too large")
+		}
 		ciphertext = make([]byte, paddedLen, paddedLen+10)
 
 		cbc := cipher.NewCBCEncrypter(block, iv)
