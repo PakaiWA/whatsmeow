@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	waBinary "github.com/PakaiWA/whatsmeow/binary"
@@ -780,7 +781,12 @@ func (cli *Client) parseGroupNode(groupNode *waBinary.Node) (*types.GroupInfo, e
 			group.IsLocked = true
 		case "ephemeral":
 			group.IsEphemeral = true
-			group.DisappearingTimer = uint32(childAG.Uint64("expiration"))
+			expiration := childAG.Uint64("expiration")
+			if expiration <= math.MaxUint32 {
+				group.DisappearingTimer = uint32(expiration)
+			} else {
+				childAG.Errors = append(childAG.Errors, fmt.Errorf("failed to parse uint in attribute '%s': value %d overflows uint32", "expiration", expiration))
+			}
 		case "member_add_mode":
 			modeBytes, _ := child.Content.([]byte)
 			group.MemberAddMode = types.GroupMemberAddMode(modeBytes)
@@ -960,7 +966,12 @@ func (cli *Client) parseGroupChange(node *waBinary.Node) (*events.GroupInfo, []s
 			link := InviteLinkPrefix + cag.String("code")
 			evt.NewInviteLink = &link
 		case "ephemeral":
-			timer := uint32(cag.Uint64("expiration"))
+			expiration := cag.Uint64("expiration")
+			timer := uint32(expiration)
+			if expiration > math.MaxUint32 {
+				cag.Errors = append(cag.Errors, fmt.Errorf("value of attribute 'expiration' overflows uint32: %d", expiration))
+				timer = math.MaxUint32
+			}
 			evt.Ephemeral = &types.GroupEphemeral{
 				IsEphemeral:       true,
 				DisappearingTimer: timer,
