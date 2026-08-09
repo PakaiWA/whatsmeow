@@ -56,7 +56,7 @@ func GetLatestVersion(ctx context.Context, httpClient *http.Client) (*store.WAVe
 		return nil, fmt.Errorf("unexpected response with status %d: %s", resp.StatusCode, data)
 	} else if match := clientVersionRegex.FindSubmatch(data); len(match) == 0 {
 		return nil, fmt.Errorf("version number not found")
-	} else if parsedVer, err := strconv.ParseInt(string(match[1]), 10, 64); err != nil {
+	} else if parsedVer, err := strconv.ParseUint(string(match[1]), 10, 32); err != nil {
 		return nil, fmt.Errorf("failed to parse version number: %w", err)
 	} else {
 		return &store.WAVersionContainer{2, 3000, uint32(parsedVer)}, nil
