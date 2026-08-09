@@ -148,7 +148,7 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 		cbc.CryptBlocks(ciphertext[aes.BlockSize:], plaintextStart)
 		cbc.CryptBlocks(ciphertext[aes.BlockSize+len(plaintextStart):], lastBlock)
 	} else {
-		ciphertext = make([]byte, paddedLen, paddedLen+10)
+		ciphertext = make([]byte, paddedLen)
 
 		cbc := cipher.NewCBCEncrypter(block, iv)
 		cbc.CryptBlocks(ciphertext, plaintextStart)
