@@ -14,13 +14,12 @@ import (
 	"syscall"
 
 	"github.com/PakaiWA/whatsmeow"
-
 	"github.com/PakaiWA/whatsmeow/store/sqlstore"
 	"github.com/PakaiWA/whatsmeow/types/events"
 	waLog "github.com/PakaiWA/whatsmeow/util/log"
 )
 
-func eventHandler(evt interface{}) {
+func eventHandler(evt any) {
 	switch v := evt.(type) {
 	case *events.Message:
 		fmt.Println("Received a message!", v.Message.GetConversation())
