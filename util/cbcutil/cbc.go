@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 )
 
@@ -108,10 +109,20 @@ func DecryptFile(key, iv []byte, file File) error {
 Encrypt is a function that encrypts plaintext with a given key and an optional initialization vector(iv).
 */
 func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
-	sizeOfLastBlock := len(plaintext) % aes.BlockSize
+	plaintextLen := len(plaintext)
+	sizeOfLastBlock := plaintextLen % aes.BlockSize
 	paddingLen := aes.BlockSize - sizeOfLastBlock
-	plaintextStart := plaintext[:len(plaintext)-sizeOfLastBlock]
-	lastBlock := append(plaintext[len(plaintext)-sizeOfLastBlock:], bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)...)
+
+	if plaintextLen > math.MaxInt-paddingLen {
+		return nil, errors.New("plaintext too large")
+	}
+	paddedLen := plaintextLen + paddingLen
+	if iv == nil && paddedLen > math.MaxInt-aes.BlockSize {
+		return nil, errors.New("plaintext too large")
+	}
+
+	plaintextStart := plaintext[:plaintextLen-sizeOfLastBlock]
+	lastBlock := append(plaintext[plaintextLen-sizeOfLastBlock:], bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)...)
 
 	if len(plaintextStart)%aes.BlockSize != 0 {
 		panic(fmt.Errorf("plaintext is not the correct size: %d %% %d != 0", len(plaintextStart), aes.BlockSize))
@@ -127,7 +138,8 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 
 	var ciphertext []byte
 	if iv == nil {
-		ciphertext = make([]byte, aes.BlockSize+len(plaintext)+paddingLen)
+		totalLen := aes.BlockSize + paddedLen
+		ciphertext = make([]byte, totalLen)
 		iv := ciphertext[:aes.BlockSize]
 		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 			return nil, err
@@ -137,7 +149,7 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 		cbc.CryptBlocks(ciphertext[aes.BlockSize:], plaintextStart)
 		cbc.CryptBlocks(ciphertext[aes.BlockSize+len(plaintextStart):], lastBlock)
 	} else {
-		ciphertext = make([]byte, len(plaintext)+paddingLen, len(plaintext)+paddingLen+10)
+		ciphertext = make([]byte, paddedLen, paddedLen+10)
 
 		cbc := cipher.NewCBCEncrypter(block, iv)
 		cbc.CryptBlocks(ciphertext, plaintextStart)
