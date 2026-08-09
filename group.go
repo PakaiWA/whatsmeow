@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	waBinary "github.com/PakaiWA/whatsmeow/binary"
@@ -960,7 +961,12 @@ func (cli *Client) parseGroupChange(node *waBinary.Node) (*events.GroupInfo, []s
 			link := InviteLinkPrefix + cag.String("code")
 			evt.NewInviteLink = &link
 		case "ephemeral":
-			timer := uint32(cag.Uint64("expiration"))
+			expiration := cag.Uint64("expiration")
+			timer := uint32(expiration)
+			if expiration > math.MaxUint32 {
+				cag.Errors = append(cag.Errors, fmt.Errorf("value of attribute 'expiration' overflows uint32: %d", expiration))
+				timer = math.MaxUint32
+			}
 			evt.Ephemeral = &types.GroupEphemeral{
 				IsEphemeral:       true,
 				DisappearingTimer: timer,
