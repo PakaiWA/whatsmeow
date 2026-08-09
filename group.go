@@ -967,10 +967,11 @@ func (cli *Client) parseGroupChange(node *waBinary.Node) (*events.GroupInfo, []s
 			evt.NewInviteLink = &link
 		case "ephemeral":
 			expiration := cag.Uint64("expiration")
-			timer := uint32(expiration)
-			if expiration > math.MaxUint32 {
+			timer := uint32(math.MaxUint32)
+			if expiration <= math.MaxUint32 {
+				timer = uint32(expiration)
+			} else {
 				cag.Errors = append(cag.Errors, fmt.Errorf("value of attribute 'expiration' overflows uint32: %d", expiration))
-				timer = math.MaxUint32
 			}
 			evt.Ephemeral = &types.GroupEphemeral{
 				IsEphemeral:       true,
