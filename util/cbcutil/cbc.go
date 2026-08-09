@@ -116,13 +116,6 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 	if plaintextLen > math.MaxInt-paddingLen {
 		return nil, errors.New("plaintext too large")
 	}
-	paddedLen := plaintextLen + paddingLen
-	if iv == nil && paddedLen > math.MaxInt-aes.BlockSize {
-		return nil, errors.New("plaintext too large")
-	}
-	if iv != nil && paddedLen > math.MaxInt-10 {
-		return nil, errors.New("plaintext too large")
-	}
 
 	plaintextStart := plaintext[:plaintextLen-sizeOfLastBlock]
 	lastBlock := append(plaintext[plaintextLen-sizeOfLastBlock:], bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)...)
@@ -139,13 +132,12 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	totalWithoutIV := plaintextLen + paddingLen
 	var ciphertext []byte
 	if iv == nil {
 		if plaintextLen > math.MaxInt-paddingLen-aes.BlockSize {
 			return nil, fmt.Errorf("plaintext too large: %d", plaintextLen)
 		}
-		totalWithIV := aes.BlockSize + totalWithoutIV
+		totalWithIV := plaintextLen + paddingLen + aes.BlockSize
 		ciphertext = make([]byte, totalWithIV)
 		iv := ciphertext[:aes.BlockSize]
 		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
@@ -156,9 +148,10 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 		cbc.CryptBlocks(ciphertext[aes.BlockSize:], plaintextStart)
 		cbc.CryptBlocks(ciphertext[aes.BlockSize+len(plaintextStart):], lastBlock)
 	} else {
-		if paddedLen > math.MaxInt-10 {
+		if plaintextLen > math.MaxInt-paddingLen {
 			return nil, errors.New("plaintext too large")
 		}
+		paddedLen := plaintextLen + paddingLen
 		ciphertext = make([]byte, paddedLen, paddedLen+10)
 
 		cbc := cipher.NewCBCEncrypter(block, iv)
