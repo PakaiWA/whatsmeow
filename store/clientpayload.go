@@ -31,11 +31,11 @@ func ParseVersion(version string) (parsed WAVersionContainer, err error) {
 	if parts := strings.Split(version, "."); len(parts) != 3 {
 		err = fmt.Errorf("'%s' doesn't contain three dot-separated parts", version)
 	} else if part1, err = strconv.ParseUint(parts[0], 10, 32); err != nil {
-		err = fmt.Errorf("first part of '%s' is not a number: %w", version, err)
+		err = fmt.Errorf("first part of '%s' is not a valid uint32 number: %w", version, err)
 	} else if part2, err = strconv.ParseUint(parts[1], 10, 32); err != nil {
-		err = fmt.Errorf("second part of '%s' is not a number: %w", version, err)
+		err = fmt.Errorf("second part of '%s' is not a valid uint32 number: %w", version, err)
 	} else if part3, err = strconv.ParseUint(parts[2], 10, 32); err != nil {
-		err = fmt.Errorf("third part of '%s' is not a number: %w", version, err)
+		err = fmt.Errorf("third part of '%s' is not a valid uint32 number: %w", version, err)
 	} else {
 		parsed = WAVersionContainer{uint32(part1), uint32(part2), uint32(part3)}
 	}
