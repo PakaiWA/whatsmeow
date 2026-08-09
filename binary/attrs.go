@@ -152,25 +152,25 @@ func (au *AttrUtility) String(key string) string {
 }
 
 func (au *AttrUtility) OptionalInt(key string) int {
-	val, _ := au.GetInt64(key, false)
-	maxInt := int64(^uint(0) >> 1)
-	minInt := -maxInt - 1
-	if val < minInt || val > maxInt {
-		au.Errors = append(au.Errors, fmt.Errorf("int value in attribute '%s' out of range: %d", key, val))
+	if strVal, ok := au.GetString(key, false); !ok {
 		return 0
+	} else if intVal, err := strconv.ParseInt(strVal, 10, strconv.IntSize); err != nil {
+		au.Errors = append(au.Errors, fmt.Errorf("failed to parse int in attribute '%s': %w", key, err))
+		return 0
+	} else {
+		return int(intVal)
 	}
-	return int(val)
 }
 
 func (au *AttrUtility) Int(key string) int {
-	val, _ := au.GetInt64(key, true)
-	maxInt := int64(^uint(0) >> 1)
-	minInt := -maxInt - 1
-	if val < minInt || val > maxInt {
-		au.Errors = append(au.Errors, fmt.Errorf("int value in attribute '%s' out of range: %d", key, val))
+	if strVal, ok := au.GetString(key, true); !ok {
 		return 0
+	} else if intVal, err := strconv.ParseInt(strVal, 10, strconv.IntSize); err != nil {
+		au.Errors = append(au.Errors, fmt.Errorf("failed to parse int in attribute '%s': %w", key, err))
+		return 0
+	} else {
+		return int(intVal)
 	}
-	return int(val)
 }
 
 func (au *AttrUtility) Int64(key string) int64 {
