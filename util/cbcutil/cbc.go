@@ -120,6 +120,9 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 	if iv == nil && paddedLen > math.MaxInt-aes.BlockSize {
 		return nil, errors.New("plaintext too large")
 	}
+	if iv != nil && paddedLen > math.MaxInt-10 {
+		return nil, errors.New("plaintext too large")
+	}
 
 	plaintextStart := plaintext[:plaintextLen-sizeOfLastBlock]
 	lastBlock := append(plaintext[plaintextLen-sizeOfLastBlock:], bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)...)
