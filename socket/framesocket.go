@@ -134,7 +134,11 @@ func (fs *FrameSocket) SendFrame(data []byte) error {
 	}
 
 	headerLength := len(fs.Header)
-	if headerLength < 0 || dataLength < 0 || headerLength > math.MaxInt-FrameLengthSize-dataLength {
+	if headerLength > math.MaxInt-FrameLengthSize {
+		return fmt.Errorf("%w (got %d bytes, max %d bytes)", ErrFrameTooLarge, len(data), FrameMaxSize)
+	}
+	maxDataLength := math.MaxInt - headerLength - FrameLengthSize
+	if dataLength > maxDataLength {
 		return fmt.Errorf("%w (got %d bytes, max %d bytes)", ErrFrameTooLarge, len(data), FrameMaxSize)
 	}
 	// Whole frame is header + 3 bytes for length + data
