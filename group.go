@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	waBinary "github.com/PakaiWA/whatsmeow/binary"
@@ -780,7 +781,12 @@ func (cli *Client) parseGroupNode(groupNode *waBinary.Node) (*types.GroupInfo, e
 			group.IsLocked = true
 		case "ephemeral":
 			group.IsEphemeral = true
-			group.DisappearingTimer = uint32(childAG.Uint64("expiration"))
+			expiration := childAG.Uint64("expiration")
+			if expiration <= math.MaxUint32 {
+				group.DisappearingTimer = uint32(expiration)
+			} else {
+				childAG.Errors = append(childAG.Errors, fmt.Errorf("failed to parse uint in attribute '%s': value %d overflows uint32", "expiration", expiration))
+			}
 		case "member_add_mode":
 			modeBytes, _ := child.Content.([]byte)
 			group.MemberAddMode = types.GroupMemberAddMode(modeBytes)
