@@ -12,6 +12,7 @@ import (
 	_ "embed"
 	"encoding/binary"
 	"encoding/json"
+	"math"
 	"sort"
 	"sync"
 
@@ -119,7 +120,14 @@ func extractReportingTokenContent(data []byte, config []reportingField) []byte {
 				i += 8
 			case wireBytes:
 				l, n := binary.Uvarint(data[i:])
-				i += n + int(l)
+				if n <= 0 || l > uint64(math.MaxInt) || i > len(data)-n {
+					return nil
+				}
+				next := i + n + int(l)
+				if next < i || next > len(data) {
+					return nil
+				}
+				i = next
 			case wire32bit:
 				i += 4
 			default:
@@ -137,14 +145,24 @@ func extractReportingTokenContent(data []byte, config []reportingField) []byte {
 			fields = append(fields, field{Num: fieldNum, Bytes: data[fieldStart:i]})
 		case wireBytes:
 			l, n := binary.Uvarint(data[i:])
+			if n <= 0 || l > uint64(math.MaxInt) || i > len(data)-n {
+				return nil
+			}
 			valStart := i + n
 			valEnd := valStart + int(l)
+			if valEnd < valStart || valEnd > len(data) {
+				return nil
+			}
 			if fieldCfg.IsMessage || len(fieldCfg.Subfields) > 0 {
 				// Recursively extract subfields
 				sub := extractReportingTokenContent(data[valStart:valEnd], fieldCfg.Subfields)
 				if len(sub) > 0 {
 					// Re-encode tag and length
-					buf := make([]byte, 0, tagLen+n+len(sub))
+					baseCap := tagLen + n
+					if baseCap < 0 || len(sub) > math.MaxInt-baseCap {
+						return nil
+					}
+					buf := make([]byte, 0, baseCap+len(sub))
 					tagBuf := make([]byte, binary.MaxVarintLen64)
 					tagN := binary.PutUvarint(tagBuf, tag)
 					lenBuf := make([]byte, binary.MaxVarintLen64)
