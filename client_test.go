@@ -14,7 +14,6 @@ import (
 	"syscall"
 
 	"github.com/PakaiWA/whatsmeow"
-
 	"github.com/PakaiWA/whatsmeow/store/sqlstore"
 	"github.com/PakaiWA/whatsmeow/types/events"
 	waLog "github.com/PakaiWA/whatsmeow/util/log"
