@@ -109,17 +109,23 @@ func DecryptFile(key, iv []byte, file File) error {
 Encrypt is a function that encrypts plaintext with a given key and an optional initialization vector(iv).
 */
 func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
+	const maxPlaintextLen = 64 * 1024 * 1024
+
 	plaintextLen := len(plaintext)
-	sizeOfLastBlock := plaintextLen % aes.BlockSize
-	paddingLen := aes.BlockSize - sizeOfLastBlock
+	if plaintextLen > maxPlaintextLen {
+		return nil, errors.New("plaintext too large")
+	}
+
+	paddingLen := aes.BlockSize - (plaintextLen % aes.BlockSize)
 
 	if plaintextLen > math.MaxInt-paddingLen {
 		return nil, errors.New("plaintext too large")
 	}
 	paddedLen := plaintextLen + paddingLen
 
-	plaintextStart := plaintext[:plaintextLen-sizeOfLastBlock]
-	lastBlock := append(plaintext[plaintextLen-sizeOfLastBlock:], bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)...)
+	plaintextStartLen := plaintextLen - (plaintextLen % aes.BlockSize)
+	plaintextStart := plaintext[:plaintextStartLen]
+	lastBlock := append(plaintext[plaintextStartLen:], bytes.Repeat([]byte{byte(paddingLen)}, paddingLen)...)
 
 	if len(plaintextStart)%aes.BlockSize != 0 {
 		panic(fmt.Errorf("plaintext is not the correct size: %d %% %d != 0", len(plaintextStart), aes.BlockSize))
