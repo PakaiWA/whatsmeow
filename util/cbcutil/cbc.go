@@ -116,12 +116,15 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 		return nil, errors.New("plaintext too large")
 	}
 
-	paddingLen := aes.BlockSize - (plaintextLen % aes.BlockSize)
-
-	if plaintextLen > math.MaxInt-paddingLen {
+	plaintextLenU := uint64(plaintextLen)
+	paddingLenU := uint64(aes.BlockSize) - (plaintextLenU % uint64(aes.BlockSize))
+	paddedLenU := plaintextLenU + paddingLenU
+	if paddedLenU > uint64(math.MaxInt) {
 		return nil, errors.New("plaintext too large")
 	}
-	paddedLen := plaintextLen + paddingLen
+
+	paddingLen := int(paddingLenU)
+	paddedLen := int(paddedLenU)
 
 	plaintextStartLen := plaintextLen - (plaintextLen % aes.BlockSize)
 	plaintextStart := plaintext[:plaintextStartLen]
@@ -141,10 +144,11 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 
 	var ciphertext []byte
 	if iv == nil {
-		if aes.BlockSize > math.MaxInt-paddedLen {
+		ciphertextLenU := uint64(aes.BlockSize) + paddedLenU
+		if ciphertextLenU > uint64(math.MaxInt) {
 			return nil, fmt.Errorf("plaintext too large: %d", plaintextLen)
 		}
-		ciphertextLen := aes.BlockSize + paddedLen
+		ciphertextLen := int(ciphertextLenU)
 		ciphertext = make([]byte, ciphertextLen)
 		iv := ciphertext[:aes.BlockSize]
 		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
