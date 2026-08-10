@@ -141,10 +141,11 @@ func Encrypt(key, iv, plaintext []byte) ([]byte, error) {
 
 	var ciphertext []byte
 	if iv == nil {
-		if paddedLen > math.MaxInt-aes.BlockSize {
+		if aes.BlockSize > math.MaxInt-paddedLen {
 			return nil, fmt.Errorf("plaintext too large: %d", plaintextLen)
 		}
-		ciphertext = make([]byte, aes.BlockSize+paddedLen)
+		ciphertextLen := aes.BlockSize + paddedLen
+		ciphertext = make([]byte, ciphertextLen)
 		iv := ciphertext[:aes.BlockSize]
 		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 			return nil, err
