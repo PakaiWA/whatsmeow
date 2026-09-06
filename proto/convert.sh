@@ -10,4 +10,9 @@ find . -name "*.proto" -print0 | \
     --go_out=paths=source_relative:. \
     --go-grpc_out=paths=source_relative:.
 
+if command -v goimports >/dev/null 2>&1; then
+  echo ">> Formatting generated .pb.go with goimports"
+  goimports -local github.com/PakaiWA/whatsmeow -w .
+fi
+
 echo "✅ Selesai generate semua .proto ke .pb.go"
