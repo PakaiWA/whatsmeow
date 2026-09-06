@@ -124,11 +124,10 @@ jobs:
           SKIP: ${{ matrix.go-version == '1.26' && 'go-imports-repo' || '' }}
 
   create-tag:
+    name: Auto Tag (v0.yy.m-dhhmm)
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
-    env:
-      TZ: Asia/Jakarta
     permissions:
       contents: write
 
@@ -136,37 +135,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Hitung versi tag (WIB)
-        id: ver
+      - name: Compute and Create Tag
+        env:
+          TZ: "Asia/Jakarta"
         run: |
-          sudo ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
-          yy=$(date +%y)
-          m=$(date +%-m)
-          d=$(date +%-d)
-          HH=$(date +%H)
-          MM=$(date +%M)
+          tag="v0.$(date +%y).$(date +%-m)-$(date +%-d%H%M)"
+          echo "Target tag: $tag"
 
-          tag="v0.${yy}.${m}-${d}${HH}${MM}"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Tag yang akan dibuat: $tag"
-
-      - name: Cek apakah tag sudah ada
-        id: check
-        run: |
-          git fetch --tags --quiet
-          if git rev-parse -q --verify "refs/tags/${{ steps.ver.outputs.tag }}" >/dev/null; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+          # Check if tag already exists in remote without pulling entire history
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists on remote. Skipping."
+            exit 0
           fi
 
-      - name: Buat dan push tag
-        if: steps.check.outputs.exists == 'false'
-        run: |
-          tag="${{ steps.ver.outputs.tag }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$tag" -m "Auto tag $tag"
           git push origin "$tag"
+          echo "Successfully created and pushed tag $tag"
