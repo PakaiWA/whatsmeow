@@ -133,11 +133,6 @@ func (au *AttrUtility) GetUnixMilli(key string, require bool) (time.Time, bool) 
 	}
 }
 
-const (
-	maxInt = int64(^uint(0) >> 1)
-	minInt = -maxInt - 1
-)
-
 // OptionalString returns the string under the given key.
 func (au *AttrUtility) OptionalString(key string) string {
 	strVal, _ := au.GetString(key, false)
