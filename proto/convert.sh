@@ -16,10 +16,15 @@ fi
 
 echo ">> Mencari semua file .proto dan generate .pb.go..."
 
+GRPC_FLAG=()
+if command -v protoc-gen-go-grpc >/dev/null 2>&1; then
+  GRPC_FLAG=(--go-grpc_out=paths=source_relative:.)
+fi
+
 find . -type f -name "*.proto" -print0 | \
   xargs -0 protoc \
     --go_out=paths=source_relative:. \
-    --go-grpc_out=paths=source_relative:.
+    "${GRPC_FLAG[@]}"
 
 if command -v goimports >/dev/null 2>&1; then
   echo ">> Merapikan format .pb.go dengan goimports..."
