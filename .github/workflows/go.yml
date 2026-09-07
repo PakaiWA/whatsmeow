@@ -96,14 +96,6 @@ jobs:
             ${{ runner.os }}-go-tools-${{ matrix.go-version }}-
             ${{ runner.os }}-go-tools-
 
-      - name: Cache pre-commit environments
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pre-commit
-          key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pre-commit-
-
       - name: Install dependencies
         run: |
           echo "$HOME/go/bin" >> $GITHUB_PATH
@@ -117,12 +109,6 @@ jobs:
 
       - name: Test
         run: go test -v ./...
-
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-        env:
-          # go 1.26's formatter doesn't agree with 1.27 on some things
-          SKIP: ${{ matrix.go-version == '1.26' && 'go-imports-repo' || '' }}
 
   create-tag:
     name: Auto Tag (v0.yy.m-dhhmm)
