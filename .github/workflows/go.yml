@@ -81,14 +81,9 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: true
 
-      - name: Set up protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Cache Go CLI Tools
         id: cache-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tools-${{ matrix.go-version }}-${{ hashFiles('go.sum') }}
