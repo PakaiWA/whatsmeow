@@ -45,15 +45,15 @@ func NewCachedLIDMap(db *dbutil.Database) *CachedLIDMap {
 }
 
 const (
-	deleteExistingLIDMappingQuery = `DELETE FROM pakaiwa_lid_map WHERE (lid<>$1 AND pn=$2)`
+	deleteExistingLIDMappingQuery = `DELETE FROM whatsmeow_lid_map WHERE (lid<>$1 AND pn=$2)`
 	putLIDMappingQuery            = `
-		INSERT INTO pakaiwa_lid_map (lid, pn)
+		INSERT INTO whatsmeow_lid_map (lid, pn)
 		VALUES ($1, $2)
-		ON CONFLICT (lid) DO UPDATE SET pn=excluded.pn WHERE pakaiwa_lid_map.pn<>excluded.pn
+		ON CONFLICT (lid) DO UPDATE SET pn=excluded.pn WHERE whatsmeow_lid_map.pn<>excluded.pn
 	`
-	getLIDForPNQuery       = `SELECT lid FROM pakaiwa_lid_map WHERE pn=$1`
-	getPNForLIDQuery       = `SELECT pn FROM pakaiwa_lid_map WHERE lid=$1`
-	getAllLIDMappingsQuery = `SELECT lid, pn FROM pakaiwa_lid_map`
+	getLIDForPNQuery       = `SELECT lid FROM whatsmeow_lid_map WHERE pn=$1`
+	getPNForLIDQuery       = `SELECT pn FROM whatsmeow_lid_map WHERE lid=$1`
+	getAllLIDMappingsQuery = `SELECT lid, pn FROM whatsmeow_lid_map`
 )
 
 var convertLIDRow = dbutil.ConvertRowFn[store.LIDMapping](func(rows dbutil.Scannable) (store.LIDMapping, error) {
@@ -169,7 +169,7 @@ func (s *CachedLIDMap) GetManyLIDsForPNs(ctx context.Context, pns []types.JID) (
 	if s.db.Dialect == dbutil.Postgres && PostgresArrayWrapper != nil {
 		res = convertLIDRow.NewRowIter(s.db.Query(
 			ctx,
-			`SELECT lid, pn FROM pakaiwa_lid_map WHERE pn = ANY($1)`,
+			`SELECT lid, pn FROM whatsmeow_lid_map WHERE pn = ANY($1)`,
 			PostgresArrayWrapper(missingPNs),
 		))
 	} else {
@@ -179,7 +179,7 @@ func (s *CachedLIDMap) GetManyLIDsForPNs(ctx context.Context, pns []types.JID) (
 		}
 		res = convertLIDRow.NewRowIter(s.db.Query(
 			ctx,
-			fmt.Sprintf(`SELECT lid, pn FROM pakaiwa_lid_map WHERE pn IN (%s)`, strings.Join(placeholders, ",")),
+			fmt.Sprintf(`SELECT lid, pn FROM whatsmeow_lid_map WHERE pn IN (%s)`, strings.Join(placeholders, ",")),
 			exslices.CastToAny(missingPNs)...,
 		))
 	}

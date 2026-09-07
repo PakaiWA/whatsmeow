@@ -1,5 +1,5 @@
 -- v13 (compatible with v8+): Add buffer for outgoing events to accept retry receipts
-CREATE TABLE pakaiwa_retry_buffer (
+CREATE TABLE whatsmeow_retry_buffer (
 	our_jid    TEXT   NOT NULL,
 	chat_jid   TEXT   NOT NULL,
 	message_id TEXT   NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE pakaiwa_retry_buffer (
 	timestamp  BIGINT NOT NULL,
 
 	PRIMARY KEY (our_jid, chat_jid, message_id),
-	FOREIGN KEY (our_jid) REFERENCES pakaiwa_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
+	FOREIGN KEY (our_jid) REFERENCES whatsmeow_device(jid) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE INDEX pakaiwa_retry_buffer_timestamp_idx ON pakaiwa_retry_buffer (our_jid, timestamp);
+CREATE INDEX whatsmeow_retry_buffer_timestamp_idx ON whatsmeow_retry_buffer (our_jid, timestamp);
