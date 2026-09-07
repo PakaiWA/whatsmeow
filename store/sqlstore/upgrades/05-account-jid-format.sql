@@ -1,2 +1,2 @@
 -- v5: Update account JID format
-UPDATE whatsmeow_device SET jid=REPLACE(jid, '.0', '');
+UPDATE pakaiwa_device SET jid=REPLACE(jid, '.0', '');

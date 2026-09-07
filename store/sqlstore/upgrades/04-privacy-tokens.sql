@@ -1,5 +1,5 @@
 -- v4: Add privacy tokens table
-CREATE TABLE whatsmeow_privacy_tokens (
+CREATE TABLE pakaiwa_privacy_tokens (
 	our_jid   TEXT,
 	their_jid TEXT,
 	token     bytea  NOT NULL,
