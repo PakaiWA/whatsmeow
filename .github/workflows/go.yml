@@ -119,17 +119,28 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Compute and Create Tag
+      - name: Compute, Clean Previous Daily Tags, and Create Tag
         env:
           TZ: "Asia/Jakarta"
         run: |
-          tag="v0.$(date +%y).$(date +%-m)-$(date +%-d%H%M)"
+          day_prefix="v0.$(date +%y).$(date +%-m)-$(date +%-d)"
+          tag="${day_prefix}$(date +%H%M)"
           echo "Target tag: $tag"
 
-          # Check if tag already exists in remote without pulling entire history
+          # Check if exact tag already exists in remote
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             echo "Tag $tag already exists on remote. Skipping."
             exit 0
+          fi
+
+          # Find and delete previous tags created on the same day
+          existing_daily_tags=$(git ls-remote --tags origin "refs/tags/${day_prefix}*" | awk '{print $2}' | grep -v '\^{}' | sed 's#refs/tags/##')
+          if [ -n "$existing_daily_tags" ]; then
+            echo "Found previous tags for today: $existing_daily_tags"
+            for old_tag in $existing_daily_tags; do
+              echo "Deleting old tag from remote: $old_tag"
+              git push --delete origin "$old_tag" || true
+            done
           fi
 
           git config user.name "github-actions[bot]"
