@@ -33,3 +33,10 @@ Things that are not yet implemented:
 
 * Sending broadcast list messages (this is not supported on WhatsApp web either)
 * Calls
+
+## License
+Project ini dilisensikan di bawah **Mozilla Public License 2.0 (MPL-2.0)**.
+- Copyright (c) 2021-2026 Tulir Asokan and whatsmeow contributors
+- Copyright (c) 2025-2026 Kelvin Anggara, PakaiWA Developers and Contributors
+
+Lihat berkas [LICENSE](LICENSE) untuk ketentuan lisensi selengkapnya.
