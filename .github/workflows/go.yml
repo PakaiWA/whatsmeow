@@ -8,7 +8,7 @@ env:
 jobs:
   migrate-whatsmeow:
     name: Migrate Whatsmeow Import Path (PR)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.ref == 'refs/heads/main'
 
     permissions:
@@ -61,7 +61,7 @@ jobs:
           exit 1
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: migrate-whatsmeow
     if: always() && (needs.migrate-whatsmeow.result == 'success' || needs.migrate-whatsmeow.result == 'skipped')
     strategy:
@@ -107,7 +107,7 @@ jobs:
 
   release:
     name: SemVer Release (vMAJOR.MINOR.PATCH)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
     permissions:
