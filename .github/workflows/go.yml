@@ -196,3 +196,9 @@ jobs:
             --target main
 
           echo "Successfully created release $new_tag"
+
+          # Warm up Go module proxy cache and trigger pkg.go.dev indexing
+          echo "Warming up proxy.golang.org and pkg.go.dev for $new_tag..."
+          curl -s -f "https://proxy.golang.org/github.com/%21pakai%21w%21a/whatsmeow/@v/$new_tag.info" >/dev/null || true
+          curl -s -f -X POST -d "path=github.com/PakaiWA/whatsmeow@$new_tag" "https://pkg.go.dev/fetch/github.com/PakaiWA/whatsmeow@$new_tag" >/dev/null || true
+          echo "Successfully triggered pkg.go.dev indexing for $new_tag"
