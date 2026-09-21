@@ -126,18 +126,30 @@ jobs:
           # Fetch all remote tags
           git fetch --tags origin
 
-          # Find highest existing SemVer tag matching vMAJOR.MINOR.PATCH
+          # Find highest existing pure SemVer tag matching vMAJOR.MINOR.PATCH
           latest_tag=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
 
           if [ -z "$latest_tag" ]; then
-            go_changes=$(git log -n 1 --name-only --pretty="" -- "*.go")
+            base_tag=$(git tag -l "v0.26.9-*" | sort -V | tail -n 1)
+            echo "No pure SemVer tag found yet. Checking changes since base tag $base_tag..."
+            if [ -n "$base_tag" ]; then
+              go_changes=$(git diff --name-only "${base_tag}"..HEAD -- "*.go")
+            else
+              go_changes=$(git log -n 1 --name-only --pretty="" -- "*.go")
+            fi
+
             if [ -z "$go_changes" ]; then
-              echo "No .go file changes detected in initial commits. Skipping release."
+              echo "No .go file changes detected since $base_tag. Skipping release."
               exit 0
             fi
-            new_tag="v0.1.0"
-            echo "No previous SemVer tag found. Initializing with $new_tag."
-            release_notes=$(git log -n 25 --no-merges --pretty=format:"* %s (%h)")
+
+            new_tag="v0.26.10"
+            echo "Initializing pure SemVer with $new_tag."
+            if [ -n "$base_tag" ]; then
+              release_notes=$(git log "${base_tag}..HEAD" --no-merges --pretty=format:"* %s (%h)")
+            else
+              release_notes=$(git log -n 25 --no-merges --pretty=format:"* %s (%h)")
+            fi
           else
             echo "Latest SemVer tag: $latest_tag"
             go_changes=$(git diff --name-only "${latest_tag}"..HEAD -- "*.go")

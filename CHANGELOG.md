@@ -4,21 +4,6 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/lang/id/).
 
-## [v0.1.0](https://github.com/PakaiWA/whatsmeow/releases/tag/v0.1.0) - 2026-09-13 (https://github.com/PakaiWA/whatsmeow/compare/v0.26.9-131114...v0.1.0)
-
-### Summary
-- **CI/CD Transformation to SemVer**: Workflow `.github/workflows/go.yml` dimigrasikan dari format timestamp kustom ke standar Semantic Versioning (`vMAJOR.MINOR.PATCH`).
-- **Automated GitHub Releases**: Menambahkan pembuatan GitHub Release otomatis menggunakan CLI `gh release create`, lengkap dengan kompilasi release notes dari riwayat commit.
-- **Diff Stats**: 1 file diubah (`.github/workflows/go.yml`), +49 insertions, -26 deletions.
-
-<details><summary><b>Commit Log (1 commits)</b></summary>
-
-- ci(github): switch auto tag to semver and create github release ([`767a3e5`](https://github.com/PakaiWA/whatsmeow/commit/767a3e5))
-
-</details>
-
-
----
 
 ## [v0.26.9-131114](https://github.com/PakaiWA/whatsmeow/tree/v0.26.9-131114) - 2026-09-13 (https://github.com/PakaiWA/whatsmeow/compare/v0.26.9-131101...v0.26.9-131114)
 

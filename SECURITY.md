@@ -8,11 +8,11 @@ PakaiWA mengutamakan keamanan komunikasi data dan proteksi integritas protokol p
 
 Kami secara aktif memelihara dan merilis patch keamanan untuk versi-versi berikut:
 
-| Version | Supported          | Catatan                                                       |
-| :------ | :----------------- | :------------------------------------------------------------ |
-| `v0.1.x`| :white_check_mark: | Versi SemVer aktif saat ini (didukung pembaruan dan patch)    |
-| `main`  | :white_check_mark: | Branch utama (selalu menerima patch keamanan dan sync terbaru)|
-| `< v0.1`| :x:                | Tag rilis format lama berbasis timestamp (tidak didukung)     |
+| Version   | Supported          | Catatan                                                       |
+| :-------- | :----------------- | :------------------------------------------------------------ |
+| `v0.26.x` | :white_check_mark: | Versi aktif saat ini (didukung pembaruan dan patch)           |
+| `main`    | :white_check_mark: | Branch utama (selalu menerima patch keamanan dan sync terbaru)|
+| `< v0.26` | :x:                | Tag rilis format lama (tidak didukung)                        |
 
 Pengguna dan layanan internal sangat disarankan untuk selalu menggunakan rilis SemVer terbaru atau mengikuti branch `main`.
 
