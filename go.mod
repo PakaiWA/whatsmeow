@@ -4,6 +4,9 @@ go 1.26.0
 
 toolchain go1.27.1
 
+// Retract legacy non-SemVer timestamp releases in favor of SemVer v0.1.x
+retract [v0.25.0, v0.26.9-131114]
+
 require (
 	github.com/beeper/argo-go v1.1.2
 	github.com/coder/websocket v1.8.15
