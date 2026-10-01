@@ -6,7 +6,7 @@
 - [ ] `client.go:630`: Pastikan penutupan dan drain `handlerQueue` saat socket teardown bersih sebelum reconnect.
 
 ## 2. Existing Code Annotations (TODO / FIXME)
-- `msgsecret.go:73`: `// TODO this is wrong if the message key used @s.whatsapp.net, but the new event is from @lid`
+- `msgsecret.go:133`: `// TODO this is wrong if the message key used @s.whatsapp.net, but the new event is from @lid`
 - `types/user.go:202`: `// TODO is this just a timestamp?` (field `DHash`)
 - `user.go:170`: `// TODO check output result?`
 - `user.go:430`: `// TODO parse bot_fields`
@@ -15,16 +15,17 @@
 - `user.go:830`: `// TODO include dhash for users`
 - `tctoken.go:170`: `// TODO replace with an UPDATE call instead of get+put`
 - `message.go:142`: `// TODO IsFromMe?`
-- `message.go:276`: `// TODO edits have an additional <meta msg_edit_t="..." original_msg_t="..."/> node`
-- `message.go:421`: `// TODO this probably isn't supposed to ack`
+- `message.go:277`: `// TODO edits have an additional <meta msg_edit_t="..." original_msg_t="..."/> node`
+- `message.go:426`: `// TODO this probably isn't supposed to ack`
 - `download.go:161`: `// TODO more proper check for unencrypted media? (also Download and DownloadToFile)`
 - `download.go:276`: `// TODO omit hash for unencrypted media?`
-- `appstate.go:298`: `// TODO what's index 2 here?`
-- `appstate.go:521`: `// TODO create new key instead of reusing the primary client's keys`
-- `send.go:214`: `// TODO somehow deduplicate this with the code in sendNewsletter?`
-- `send.go:306`: `// TODO this is fairly hacky, is there a proper way to determine which identity the message is sent with?`
-- `send.go:1200`: `// TODO this is a very hacky hack for announcement group messages, why is it pn anyway?`
-- `send.go:1303`: `// TODO query LID from server for missing entries`
+- `appstate.go:299`: `// TODO what's index 2 here?`
+- `appstate.go:554`: `// TODO create new key instead of reusing the primary client's keys`
+- `send.go:217`: `// TODO somehow deduplicate this with the code in sendNewsletter?`
+- `send.go:313`: `// TODO this is fairly hacky, is there a proper way to determine which identity the message is sent with?`
+- `send.go:1215`: `// TODO this is a very hacky hack for announcement group messages, why is it pn anyway?`
+- `send.go:1318`: `// TODO query LID from server for missing entries`
+- `send.go:1354`: `// TODO return these errors if it's a fatal one (like context cancellation or database)`
 - `group.go:57`: `// TODO member_share_group_history_mode`
 - `group.go:767`: `// TODO confirm field name (group.TopicSetByPN)`
 - `retry.go:281`: `// TODO pre-retry callback for fb`
