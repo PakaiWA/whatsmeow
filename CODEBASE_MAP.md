@@ -28,7 +28,7 @@
 - **Dependencies**: `database/sql`, `go.mau.fi/util/dbutil`, driver SQLite/Postgres.
 - **Consumers**: `whatsmeow.Client`, handler handshake, message decrypter/encrypter.
 - **External Integrations**: SQLite / PostgreSQL database.
-- **Key Notes**: Mendukung multi-device session dalam satu database tunggal.
+- **Key Notes**: Mendukung multi-device session dalam satu database tunggal, serta schema v16 untuk persistensi WASA root secret ID (`wasa_root_secret_id`) untuk interaksi Muse/bot.
 
 ---
 
@@ -80,14 +80,15 @@
 
 ---
 
-## Sub-package: `types` & `types/events`
-- **Responsibility**: Model domain kuat, JID parser/formatter (User, Group, Broadcast, Newsletter, Hidden User/LID), serta event structs.
+## Sub-package: `types`, `types/events` & `types/richresponse`
+- **Responsibility**: Model domain kuat, JID parser/formatter (User, Group, Broadcast, Newsletter, Hidden User/LID), event structs, dan WhatsApp Rich Response (text entities, view models, formatted text unmarshaling).
 - **Entry / Key Files**:
   - `types/jid.go` — Definisi `JID` struct dan konversi server type (`@s.whatsapp.net`, `@g.us`, `@lid`, `@newsletter`).
   - `types/events/events.go` — Event definisi yang dikirimkan ke `EventHandler` consumer (`Message`, `Receipt`, `GroupInfo`, `Connected`, `LoggedOut`).
+  - `types/richresponse/` — Primitif rich responses, entity parser, dan type preserver untuk pesan berformat.
 - **Dependencies**: Tidak ada dependensi internal berat.
 - **Consumers**: Seluruh codebase dan consumer library eksternal.
-- **Key Notes**: Membedakan JID berbasis Phone Number (PN) dan Privacy LID.
+- **Key Notes**: Membedakan JID berbasis Phone Number (PN) dan Privacy LID; menyediakan parsing pesan rich text dan interactive bot elements.
 
 ---
 
