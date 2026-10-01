@@ -1,5 +1,5 @@
 # whatsmeow
-[![Go Reference](https://pkg.go.dev/badge/go.mau.fi/whatsmeow.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow)
+[![Go Reference](https://pkg.go.dev/badge/github.com/PakaiWA/whatsmeow.svg)](https://pkg.go.dev/github.com/PakaiWA/whatsmeow)
 
 whatsmeow is a Go library for the WhatsApp web multidevice API.
 
@@ -13,8 +13,8 @@ discussions.
 [WhatsApp protocol Q&A]: https://github.com/tulir/whatsmeow/discussions/categories/whatsapp-protocol-q-a
 
 ## Usage
-The [godoc](https://pkg.go.dev/go.mau.fi/whatsmeow) includes docs for all methods and event types.
-There's also a [simple example](https://pkg.go.dev/go.mau.fi/whatsmeow#example-package) at the top.
+The [godoc](https://pkg.go.dev/github.com/PakaiWA/whatsmeow) includes docs for all methods and event types.
+There's also a [simple example](https://pkg.go.dev/github.com/PakaiWA/whatsmeow#example-package) at the top.
 
 ## Features
 Most core features are already present:
@@ -33,3 +33,10 @@ Things that are not yet implemented:
 
 * Sending broadcast list messages (this is not supported on WhatsApp web either)
 * Calls
+
+## License
+Project ini dilisensikan di bawah **Mozilla Public License 2.0 (MPL-2.0)**.
+- Copyright (c) 2021-2026 Tulir Asokan and whatsmeow contributors
+- Copyright (c) 2025-2026 Kelvin Anggara, PakaiWA Developers and Contributors
+
+Lihat berkas [LICENSE](LICENSE) untuk ketentuan lisensi selengkapnya.

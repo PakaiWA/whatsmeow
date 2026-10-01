@@ -10,13 +10,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"sync"
 	"sync/atomic"
 
 	"github.com/coder/websocket"
 
-	waLog "go.mau.fi/whatsmeow/util/log"
+	waLog "github.com/PakaiWA/whatsmeow/util/log"
 )
 
 type FrameSocket struct {
@@ -133,8 +134,20 @@ func (fs *FrameSocket) SendFrame(data []byte) error {
 	}
 
 	headerLength := len(fs.Header)
+	if headerLength > math.MaxInt-FrameLengthSize {
+		return fmt.Errorf("%w (got %d bytes, max %d bytes)", ErrFrameTooLarge, len(data), FrameMaxSize)
+	}
+	maxDataLength := math.MaxInt - headerLength - FrameLengthSize
+	if dataLength > maxDataLength {
+		return fmt.Errorf("%w (got %d bytes, max %d bytes)", ErrFrameTooLarge, len(data), FrameMaxSize)
+	}
 	// Whole frame is header + 3 bytes for length + data
-	wholeFrame := make([]byte, headerLength+FrameLengthSize+dataLength)
+	totalLength64 := int64(headerLength) + int64(FrameLengthSize) + int64(dataLength)
+	if totalLength64 < 0 || totalLength64 > int64(math.MaxInt) {
+		return fmt.Errorf("%w (got %d bytes, max %d bytes)", ErrFrameTooLarge, len(data), FrameMaxSize)
+	}
+	totalLength := int(totalLength64)
+	wholeFrame := make([]byte, totalLength)
 
 	// Copy the header if it's there
 	if fs.Header != nil {

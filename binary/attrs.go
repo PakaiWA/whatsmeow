@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"go.mau.fi/whatsmeow/types"
+	"github.com/PakaiWA/whatsmeow/types"
 )
 
 // AttrUtility is a helper struct for reading multiple XML attributes and checking for errors afterwards.
@@ -147,13 +147,25 @@ func (au *AttrUtility) String(key string) string {
 }
 
 func (au *AttrUtility) OptionalInt(key string) int {
-	val, _ := au.GetInt64(key, false)
-	return int(val)
+	if strVal, ok := au.GetString(key, false); !ok {
+		return 0
+	} else if intVal, err := strconv.ParseInt(strVal, 10, strconv.IntSize); err != nil {
+		au.Errors = append(au.Errors, fmt.Errorf("failed to parse int in attribute '%s': %w", key, err))
+		return 0
+	} else {
+		return int(intVal)
+	}
 }
 
 func (au *AttrUtility) Int(key string) int {
-	val, _ := au.GetInt64(key, true)
-	return int(val)
+	if strVal, ok := au.GetString(key, true); !ok {
+		return 0
+	} else if intVal, err := strconv.ParseInt(strVal, 10, strconv.IntSize); err != nil {
+		au.Errors = append(au.Errors, fmt.Errorf("failed to parse int in attribute '%s': %w", key, err))
+		return 0
+	} else {
+		return int(intVal)
+	}
 }
 
 func (au *AttrUtility) Int64(key string) int64 {

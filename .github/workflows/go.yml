@@ -1,41 +1,204 @@
-name: Go
+name: Go and SemVer Release (vMAJOR.MINOR.PATCH)
 
-on: [push, pull_request]
+on: [push, workflow_dispatch]
 
 env:
   GOTOOLCHAIN: local
 
 jobs:
+  migrate-whatsmeow:
+    name: Migrate Whatsmeow Import Path (PR)
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    outputs:
+      pr_created: ${{ steps.pr.outputs.pull-request-number != '' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Check for upstream import path
+        id: check_imports
+        run: |
+          if grep -R --include="*.go" -q "go.mau.fi/whatsmeow" .; then
+            echo "needs_migration=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_migration=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Replace whatsmeow import path (only .go files)
+        if: steps.check_imports.outputs.needs_migration == 'true'
+        run: |
+          set -e
+          find . -type f -name "*.go" \
+            -not -path "./vendor/*" \
+            -not -path "./.github/*" \
+            -print0 \
+          | xargs -0 sed -i.bak 's|go.mau.fi/whatsmeow|github.com/PakaiWA/whatsmeow|g' || true
+
+          find . -type f -name "*.bak" -delete
+
+      - name: Create Pull Request (via BOT token)
+        id: pr
+        if: steps.check_imports.outputs.needs_migration == 'true'
+        uses: peter-evans/create-pull-request@v8.1.1
+        with:
+          token: ${{ secrets.PAKAIWA_ACTION_BOT }}
+          title: "chore: migrate whatsmeow import path"
+          commit-message: "chore: replace go.mau.fi/whatsmeow with github.com/PakaiWA/whatsmeow"
+          branch: chore/migrate-whatsmeow
+          delete-branch: true
+
+      - name: Stop pipeline if PR was created
+        if: steps.pr.outputs.pull-request-number != ''
+        run: |
+          echo "PR dibuat (#${{ steps.pr.outputs.pull-request-number }}). Hentikan pipeline."
+          exit 1
+
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    needs: migrate-whatsmeow
+    if: always() && (needs.migrate-whatsmeow.result == 'success' || needs.migrate-whatsmeow.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
         go-version: ["1.26", "1.27"]
     name: Build ${{ matrix.go-version == '1.27' && '(latest)' || '(old)' }}
+    permissions:
+      contents: read
 
     steps:
-    - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-    - name: Set up Go
-      uses: actions/setup-go@v7
-      with:
-        go-version: ${{ matrix.go-version }}
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
 
-    - name: Build
-      run: go build -v ./...
+      - name: Cache Go CLI Tools
+        id: cache-tools
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/go/bin
+          key: ${{ runner.os }}-go-tools-${{ matrix.go-version }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-tools-${{ matrix.go-version }}-
+            ${{ runner.os }}-go-tools-
 
-    - name: Test
-      run: go test -v ./...
+      - name: Install dependencies
+        run: |
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+          command -v protoc-gen-go >/dev/null 2>&1 || go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          command -v protoc-gen-go-grpc >/dev/null 2>&1 || go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          command -v goimports >/dev/null 2>&1 || go install golang.org/x/tools/cmd/goimports@latest
+          command -v staticcheck >/dev/null 2>&1 || go install honnef.co/go/tools/cmd/staticcheck@latest
 
-    - name: Install dependencies
-      run: |
-        go install golang.org/x/tools/cmd/goimports@latest
-        go install honnef.co/go/tools/cmd/staticcheck@latest
-        export PATH="$HOME/go/bin:$PATH"
+      - name: Build
+        run: go build -v ./...
 
-    - name: Run pre-commit
-      uses: pre-commit/action@v3.0.1
-      env:
-        # go 1.26's formatter doesn't agree with 1.27 on some things
-        SKIP: ${{ matrix.go-version == '1.26' && 'go-imports-repo' || '' }}
+      - name: Test
+        run: go test -v ./...
+
+  release:
+    name: SemVer Release (vMAJOR.MINOR.PATCH)
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Calculate SemVer Tag and Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch all remote tags
+          git fetch --tags origin
+
+          # Find highest existing pure SemVer tag matching vMAJOR.MINOR.PATCH
+          latest_tag=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+
+          if [ -z "$latest_tag" ]; then
+            base_tag=$(git tag -l "v0.26.9-*" | sort -V | tail -n 1)
+            echo "No pure SemVer tag found yet. Checking changes since base tag $base_tag..."
+            if [ -n "$base_tag" ]; then
+              go_changes=$(git diff --name-only "${base_tag}"..HEAD -- "*.go")
+            else
+              go_changes=$(git log -n 1 --name-only --pretty="" -- "*.go")
+            fi
+
+            if [ -z "$go_changes" ]; then
+              echo "No .go file changes detected since $base_tag. Skipping release."
+              exit 0
+            fi
+
+            new_tag="v0.26.10"
+            echo "Initializing pure SemVer with $new_tag."
+            if [ -n "$base_tag" ]; then
+              release_notes=$(git log "${base_tag}..HEAD" --no-merges --pretty=format:"* %s (%h)")
+            else
+              release_notes=$(git log -n 25 --no-merges --pretty=format:"* %s (%h)")
+            fi
+          else
+            echo "Latest SemVer tag: $latest_tag"
+            go_changes=$(git diff --name-only "${latest_tag}"..HEAD -- "*.go")
+            if [ -z "$go_changes" ]; then
+              echo "No .go file changes detected between $latest_tag and HEAD. Skipping release."
+              exit 0
+            fi
+            echo "Detected .go file changes:"
+            echo "$go_changes"
+
+            major=$(echo "$latest_tag" | sed -E 's/^v([0-9]+)\.([0-9]+)\.([0-9]+)$/\1/')
+            minor=$(echo "$latest_tag" | sed -E 's/^v([0-9]+)\.([0-9]+)\.([0-9]+)$/\2/')
+            patch=$(echo "$latest_tag" | sed -E 's/^v([0-9]+)\.([0-9]+)\.([0-9]+)$/\3/')
+            new_patch=$((patch + 1))
+            new_tag="v${major}.${minor}.${new_patch}"
+            release_notes=$(git log "${latest_tag}..HEAD" --no-merges --pretty=format:"* %s (%h)")
+          fi
+
+          echo "Target SemVer tag: $new_tag"
+
+          if [ -z "$release_notes" ]; then
+            release_notes="* Routine maintenance and updates ($(git rev-parse --short HEAD))"
+          fi
+
+          echo "### Release Notes:"
+          echo "$release_notes"
+
+          # Check if tag already exists in remote
+          if git ls-remote --exit-code --tags origin "refs/tags/$new_tag" >/dev/null 2>&1; then
+            echo "Tag $new_tag already exists on remote. Skipping release."
+            exit 0
+          fi
+
+          # Create release notes file
+          cat <<EOF > release_notes.md
+          ## What's Changed
+          $release_notes
+          EOF
+
+          # Create GitHub Release with tag and release notes
+          gh release create "$new_tag" \
+            --title "$new_tag" \
+            --notes-file release_notes.md \
+            --target main
+
+          echo "Successfully created release $new_tag"
+
+          # Warm up Go module proxy cache and trigger pkg.go.dev indexing
+          echo "Warming up proxy.golang.org and pkg.go.dev for $new_tag..."
+          curl -s -f "https://proxy.golang.org/github.com/%21pakai%21w%21a/whatsmeow/@v/$new_tag.info" >/dev/null || true
+          curl -s -f -X POST -d "path=github.com/PakaiWA/whatsmeow@$new_tag" "https://pkg.go.dev/fetch/github.com/PakaiWA/whatsmeow@$new_tag" >/dev/null || true
+          echo "Successfully triggered pkg.go.dev indexing for $new_tag"
