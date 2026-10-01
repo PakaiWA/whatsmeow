@@ -1,6 +1,16 @@
 name: Go and SemVer Release (vMAJOR.MINOR.PATCH)
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.go'
+      - '**/*.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+  workflow_dispatch:
 
 env:
   GOTOOLCHAIN: local
