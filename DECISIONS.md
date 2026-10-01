@@ -64,3 +64,49 @@
 - **Consequences**:
   - Positif: Setiap perubahan protobuf langsung terkompilasi dan terformat seragam sebelum kode di-push.
   - Negatif: Developer wajib memiliki binary `protoc` dan `protoc-gen-go` di local environment saat mengubah skema proto.
+
+---
+
+## ADR-006: Pure SemVer Versioning Starting at v0.26.10 with Automated Proxy Warmup
+
+- **Status**: Accepted
+- **Date**: 2026-10-01
+- **Source**: CI workflow evolution (`.github/workflows/go.yml`) & Release tracking
+- **Context**: Sebelumnya repositori memiliki tag legacy `v0.25.*` hingga `v0.26.9` dari upstream. Ketika rilis branch `main` PakaiWA dipersiapkan, penomoran versi baru harus berkesinambungan dan mematuhi standard Go module versioning tanpa memutus kompatibilitas down-stream dependency resolution. Selain itu, Go module proxy (`proxy.golang.org`) dan indexer dokumentasi (`pkg.go.dev`) membutuhkan request warmup otomatis setelah rilis dipublikasikan agar package langsung terindeks tanpa menunggu query organik.
+- **Decision**:
+  1. Melanjutkan penomoran SemVer secara linier dimulai dari `v0.26.10` untuk setiap rilis patch berikutnya.
+  2. Mengotomatiskan auto-tagging patch release di GitHub Actions workflow (`.github/workflows/go.yml`) pada push ke branch `main`, dengan guard kondisi khusus (`filter` paths: `**/*.go`, `go.mod`, `go.sum`, `proto/**`, mengecualikan dokumen/workflow non-Go).
+  3. Menambahkan step warmup otomatis setelah rilis yang memanggil endpoint `https://proxy.golang.org/github.com/PakaiWA/whatsmeow/@v/${NEW_TAG}.info` dan request reindex ke `https://pkg.go.dev/github.com/PakaiWA/whatsmeow@${NEW_TAG}`.
+- **Consequences**:
+  - Positif: Rilis selalu konsisten, tidak ada duplikasi tag, modul Go langsung tersedia dan terverifikasi di ekosistem Go proxy dan pkg.go.dev segera setelah rilis dibuat.
+  - Negatif: Push yang hanya mengubah file non-Go (`*.md`, CI configs) tidak memicu pembuatan rilis baru (sesuai ekspektasi rilis library).
+
+---
+
+## ADR-007: Dual Copyright Attribution Under MPL-2.0
+
+- **Status**: Accepted
+- **Date**: 2026-10-01
+- **Source**: Licensing compliance review (`LICENSE`, `README.md`)
+- **Context**: `whatsmeow` dilisensikan di bawah Mozilla Public License 2.0 (MPL-2.0). Sebagai fork terkelola yang menambahkan adaptasi platform, modifikasi identitas, dan perbaikan keamanan, repositori wajib mempertahankan atribusi hak cipta pencipta awal sekaligus mencatatkan atribusi hak cipta bagi kontributor dan pengembang PakaiWA.
+- **Decision**:
+  1. Mempertahankan hak cipta orisinal: `Copyright (C) 2021-2026 Tulir Asokan`.
+  2. Menambahkan hak cipta fork: `Copyright (C) 2025-2026 Kelvin Anggara, PakaiWA Developers and Contributors`.
+  3. Menampilkan pernyataan dual copyright ini secara eksplisit pada file `LICENSE` dan bagian lisensi `README.md`.
+- **Consequences**:
+  - Positif: Memenuhi klausul legal MPL-2.0 secara transparan, menghargai kontribusi hulu (upstream) sekaligus menegaskan kepemilikan adaptasi hilir (downstream).
+  - Negatif: Setiap perubahan teks lisensi atau header file di masa depan harus menjaga integritas atribusi ganda ini.
+
+---
+
+## ADR-008: Long-Term Runner Pinning to Ubuntu 24.04 in CI Workflows
+
+- **Status**: Accepted
+- **Date**: 2026-10-01
+- **Source**: Infrastructure & CI standardization (`.github/workflows/go.yml`, `.github/workflows/label-pr.yml`)
+- **Context**: Menggunakan runner alias mengambang seperti `ubuntu-latest` dapat memicu kegagalan build/test yang tidak terduga saat GitHub memigrasikan image default ke versi OS baru (misal perubahan toolchain GCC, glibc, Python, atau paket sistem).
+- **Decision**:
+  Mengunci semua job CI GitHub Actions (`build`, `test`, `release`, `pr-labeler`) ke image LTS spesifik: `runs-on: ubuntu-24.04`.
+- **Consequences**:
+  - Positif: Lingkungan runner deterministik, stabil, dan terhindar dari breaking changes mendadak akibat rolling update runner host GitHub.
+  - Negatif: Perlu evaluasi berkala terjadwal saat image `ubuntu-24.04` mendekati siklus end-of-support (EOL).
