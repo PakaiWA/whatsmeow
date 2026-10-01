@@ -58,11 +58,14 @@
 
 ## Coding Conventions & Standards
 - **Module Path**: Wajib menggunakan `github.com/PakaiWA/whatsmeow`.
-- **Pre-commit Pipeline**:
-  - `proto-convert`: Regenerasi `.pb.go` dari file `.proto` di dalam `proto/`.
-  - `go-imports-repo`: Pengurutan import otomatis dengan `-local github.com/PakaiWA/whatsmeow -w`.
-  - `staticcheck` & `go-vet`: Pengecekan kualitas kode dan static analysis.
-- **Device Fingerprint**: Metadata `DeviceProps OS` wajib menggunakan identitas platform `PakaiWA`.
+  - **Versioning & Release**: SemVer murni (dimulai dari `v0.26.10`), auto-tagging CI pada branch `main` dengan filter perubahan file `.go`, serta request warmup otomatis ke `proxy.golang.org` dan `pkg.go.dev`.
+  - **Pre-commit Pipeline**:
+    - `proto-convert`: Regenerasi `.pb.go` dari file `.proto` di dalam `proto/`.
+    - `go-imports-repo`: Pengurutan import otomatis dengan `-local github.com/PakaiWA/whatsmeow -w`.
+    - `staticcheck` & `go-vet`: Pengecekan kualitas kode dan static analysis.
+  - **Device Fingerprint**: Metadata `DeviceProps OS` wajib menggunakan identitas platform `PakaiWA`.
+  - **CI Environment**: Runner GitHub Actions dikunci ke `ubuntu-24.04` untuk stabilitas jangka panjang.
+  - **Licensing & Attribution**: Lisensi MPL-2.0 dengan atribusi ganda eksplisit (Tulir Asokan 2021-2026 & Kelvin Anggara, PakaiWA Developers and Contributors 2025-2026).
 
 ---
 
