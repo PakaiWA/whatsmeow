@@ -110,3 +110,23 @@
 - **Consequences**:
   - Positif: Lingkungan runner deterministik, stabil, dan terhindar dari breaking changes mendadak akibat rolling update runner host GitHub.
   - Negatif: Perlu evaluasi berkala terjadwal saat image `ubuntu-24.04` mendekati siklus end-of-support (EOL).
+
+---
+
+## ADR-009: Standardization of CI Workflow Extensions (.yaml) and Application Path Push Triggers
+
+- **Status**: Accepted
+- **Date**: 2026-10-01
+- **Source**: CI workflow modernization (`.github/workflows/go.yaml`, `.github/workflows/codeql.yaml`, `.github/workflows/stale.yaml`)
+- **Context**: Sebelumnya workflow files menggunakan ekstensi gado-gado `.yml` dan push trigger pada branch `main` tidak memfilter path file. Akibatnya, setiap commit dokumen (seperti `README.md`, `ARCHITECTURE.md`, `DECISIONS.md`) berpotensi memicu pipeline rilis SemVer dan pembuatan tag baru yang tidak perlu untuk file non-aplikasi.
+- **Decision**:
+  1. Menstandardisasi semua file workflow GitHub Actions menggunakan ekstensi `.yaml` (`go.yaml`, `codeql.yaml`, `stale.yaml`).
+  2. Menerapkan filter `paths` pada push trigger `main` di `.github/workflows/go.yaml` agar hanya berjalan jika terdapat perubahan pada file aplikasi:
+     - `**/*.go`
+     - `**/*.yaml`
+     - `go.mod`
+     - `go.sum`
+     - `Makefile`
+- **Consequences**:
+  - Positif: Mencegah eksekusi build/test dan tagging release SemVer otomatis yang berlebihan saat hanya memperbarui dokumentasi atau file non-runtime. Konsistensi ekstensi file YAML di seluruh repositori.
+  - Negatif: Perubahan konfigurasi workflow baru atau build script di luar filter di atas harus mendaftarkan ekstensinya ke `paths` jika ingin memicu CI release.
