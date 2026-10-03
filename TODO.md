@@ -3,7 +3,7 @@
 ## 1. Immediate Tasks
 - [ ] `.pre-commit-config.yaml:37`: Aktifkan atau selesaikan hook `zerolog-ban-msgf` dan `zerolog-use-stringer` setelah memastikan format logging seragam.
 - [ ] `request.go:227`: Refactor error timeout handling pada `sendIQ` yang masih ditandai `FIXME this error isn't technically correct`.
-- [ ] `client.go:630`: Pastikan penutupan dan drain `handlerQueue` saat socket teardown bersih sebelum reconnect.
+- [ ] `client.go:632`: Pastikan penutupan dan drain `handlerQueue` saat socket teardown bersih sebelum reconnect (`// TODO wait for handler queue to close here?`).
 
 ## 2. Existing Code Annotations (TODO / FIXME)
 - `msgsecret.go:133`: `// TODO this is wrong if the message key used @s.whatsapp.net, but the new event is from @lid`
