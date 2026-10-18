@@ -1,0 +1,22 @@
+# Codecov configuration
+# https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  precision: 2
+  round: down
+  range: "50...100"
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+# Ignore auto-generated protobuf files and database schema migrations
+ignore:
+  - "proto"
+  - "**/*.pb.go"
+  - "store/sqlstore/upgrades"
