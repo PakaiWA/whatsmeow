@@ -8,6 +8,8 @@
 package hkdfutil_test
 
 import (
+	"hash"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,4 +43,43 @@ func TestSHA256(t *testing.T) {
 		res2 := hkdfutil.SHA256(key, salt, []byte("Info B"), 32)
 		assert.NotEqual(t, res1, res2)
 	})
+
+	t.Run("Panic on Read error", func(t *testing.T) {
+		restore := hkdfutil.SetNewHKDFForTesting(func(h func() hash.Hash, secret, salt, info []byte) io.Reader {
+			return &errReader{err: io.ErrUnexpectedEOF}
+		})
+		defer restore()
+
+		assert.Panics(t, func() {
+			hkdfutil.SHA256(key, salt, info, 32)
+		})
+	})
+
+	t.Run("Panic on short Read bytes", func(t *testing.T) {
+		restore := hkdfutil.SetNewHKDFForTesting(func(h func() hash.Hash, secret, salt, info []byte) io.Reader {
+			return &shortReader{readBytes: 10}
+		})
+		defer restore()
+
+		assert.Panics(t, func() {
+			hkdfutil.SHA256(key, salt, info, 32)
+		})
+	})
+}
+
+type errReader struct {
+	err error
+}
+
+func (e *errReader) Read(_ []byte) (int, error) {
+	return 0, e.err
+}
+
+type shortReader struct {
+	readBytes int
+}
+
+func (s *shortReader) Read(p []byte) (int, error) {
+	n := min(len(p), s.readBytes)
+	return n, nil
 }

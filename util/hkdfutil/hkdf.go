@@ -14,9 +14,11 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+var newHKDF = hkdf.New
+
 func SHA256(key, salt, info []byte, length uint8) []byte {
 	data := make([]byte, length)
-	h := hkdf.New(sha256.New, key, salt, info)
+	h := newHKDF(sha256.New, key, salt, info)
 	n, err := h.Read(data)
 	if err != nil {
 		// Length is limited to 255 by being uint8, so these errors can't actually happen
