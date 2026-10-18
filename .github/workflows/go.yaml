@@ -6,10 +6,6 @@ on:
       - main
     paths:
       - '**/*.go'
-      - '**/*.yaml'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Makefile'
   workflow_dispatch:
 
 env:
