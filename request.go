@@ -150,6 +150,9 @@ func (cli *Client) sendIQAsync(ctx context.Context, query infoQuery) (<-chan *wa
 const defaultRequestTimeout = 75 * time.Second
 
 func (cli *Client) sendIQ(ctx context.Context, query infoQuery) (*waBinary.Node, error) {
+	if cli.sendIQHook != nil {
+		return cli.sendIQHook(ctx, query)
+	}
 	if query.Timeout == 0 {
 		query.Timeout = defaultRequestTimeout
 	}
