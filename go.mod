@@ -13,7 +13,7 @@ require (
 	go.mau.fi/util v0.10.1
 	golang.org/x/crypto v0.57.0
 	golang.org/x/net v0.59.0
-	golang.org/x/sync v0.23.0
+	golang.org/x/sync v0.24.0
 	google.golang.org/protobuf v1.36.12
 )
 
