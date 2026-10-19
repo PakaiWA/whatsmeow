@@ -1,5 +1,6 @@
 # whatsmeow
 [![Go Reference](https://pkg.go.dev/badge/github.com/PakaiWA/whatsmeow.svg)](https://pkg.go.dev/github.com/PakaiWA/whatsmeow)
+[![codecov](https://codecov.io/gh/PakaiWA/whatsmeow/graph/badge.svg?token=2CWVMG1B2Q)](https://codecov.io/gh/PakaiWA/whatsmeow)
 
 `whatsmeow` is a Go library for the WhatsApp web multidevice API. It provides persistent WebSocket connectivity, Noise Protocol handshake, Signal Protocol end-to-end encryption (E2EE), session persistence, media handling, and event dispatching.
 
@@ -130,6 +131,12 @@ Comprehensive architectural guides and codebase maps are available in the reposi
 * [`SECURITY.md`](SECURITY.md) — Security policy and vulnerability disclosure procedures.
 
 Complete API reference documentation is hosted on [pkg.go.dev](https://pkg.go.dev/github.com/PakaiWA/whatsmeow).
+
+---
+
+## Code Coverage
+
+[![Codecov Coverage Graph](https://codecov.io/gh/PakaiWA/whatsmeow/graphs/tree.svg?token=2CWVMG1B2Q)](https://codecov.io/gh/PakaiWA/whatsmeow)
 
 ---
 
