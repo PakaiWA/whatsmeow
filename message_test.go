@@ -17,8 +17,11 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	waBinary "github.com/PakaiWA/whatsmeow/binary"
+	"github.com/PakaiWA/whatsmeow/proto/waCommon"
 	"github.com/PakaiWA/whatsmeow/proto/waE2E"
 	"github.com/PakaiWA/whatsmeow/proto/waHistorySync"
+	"github.com/PakaiWA/whatsmeow/proto/waLidMigrationSyncPayload"
+	"github.com/PakaiWA/whatsmeow/proto/waWeb"
 	"github.com/PakaiWA/whatsmeow/store"
 	"github.com/PakaiWA/whatsmeow/types"
 	"github.com/PakaiWA/whatsmeow/types/events"
@@ -389,4 +392,334 @@ func (m *mockCustomAppStateKeyStore) GetAllAppStateSyncKeys(_ context.Context) (
 		res = append(res, &valCopy)
 	}
 	return res, nil
+}
+
+func TestMessage_HandleUnencryptedMessage(t *testing.T) {
+	ctx := context.Background()
+	devID := types.NewJID("12345", types.DefaultUserServer)
+	dev := &store.Device{
+		ID:         &devID,
+		MsgSecrets: newMockCustomMsgSecretStore(),
+	}
+	cli := NewClient(dev, waLog.Noop)
+
+	t.Run("Non-newsletter sender acks with 0 and returns", func(t *testing.T) {
+		var sentAcks []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			sentAcks = append(sentAcks, node)
+			return nil
+		}
+
+		userSender := types.NewJID("62811111", types.DefaultUserServer)
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": userSender,
+				"id":   "unenc-1",
+				"t":    "1700000000",
+			},
+		}
+
+		cli.handleUnencryptedMessage(ctx, node)
+		require.Len(t, sentAcks, 1)
+		assert.Equal(t, "ack", sentAcks[0].Tag)
+		assert.Equal(t, "unenc-1", sentAcks[0].Attrs["id"])
+	})
+
+	t.Run("Newsletter sender dispatches message", func(t *testing.T) {
+		var sentAcks []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			sentAcks = append(sentAcks, node)
+			return nil
+		}
+
+		var dispatched *events.Message
+		cli.AddEventHandler(func(evt any) {
+			if m, ok := evt.(*events.Message); ok {
+				dispatched = m
+			}
+		})
+
+		newsJID := types.NewJID("12036304@newsletter", types.NewsletterServer)
+		innerMsg := &waE2E.Message{
+			Conversation: new("hello newsletter"),
+		}
+		marshaled, err := proto.Marshal(innerMsg)
+		require.NoError(t, err)
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": newsJID,
+				"id":   "news-msg-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag:     "plaintext",
+					Content: marshaled,
+				},
+				{
+					Tag: "meta",
+					Attrs: waBinary.Attrs{
+						"msg_edit_t":     "1700000001000",
+						"original_msg_t": "1700000000",
+					},
+				},
+			},
+		}
+
+		cli.handleUnencryptedMessage(ctx, node)
+		require.NotNil(t, dispatched)
+		assert.True(t, dispatched.Info.IsNewsletterStatus)
+		assert.Equal(t, "hello newsletter", dispatched.Message.GetConversation())
+		require.NotNil(t, dispatched.NewsletterMeta)
+	})
+}
+
+func TestMessage_SyncAndHistoricalStores(t *testing.T) {
+	ctx := context.Background()
+	devID := types.NewJID("12345", types.DefaultUserServer)
+	lidStore := newMockLIDStore()
+	msgSecretStore := newMockCustomMsgSecretStore()
+	privacyTokens := newMockPrivacyTokenStore()
+
+	dev := &store.Device{
+		ID:            &devID,
+		LIDs:          lidStore,
+		MsgSecrets:    msgSecretStore,
+		PrivacyTokens: privacyTokens,
+	}
+	cli := NewClient(dev, waLog.Noop)
+
+	t.Run("storeLIDSyncMessage stores PN-LID mappings", func(t *testing.T) {
+		payload := &waLidMigrationSyncPayload.LIDMigrationMappingSyncPayload{
+			ChatDbMigrationTimestamp: proto.Uint64(1700000500),
+			PnToLidMappings: []*waLidMigrationSyncPayload.LIDMigrationMapping{
+				{
+					Pn:          proto.Uint64(628123456),
+					AssignedLid: proto.Uint64(100200300),
+				},
+			},
+		}
+		raw, err := proto.Marshal(payload)
+		require.NoError(t, err)
+
+		cli.storeLIDSyncMessage(ctx, raw)
+		assert.Equal(t, int64(1700000500), cli.Store.LIDMigrationTimestamp)
+
+		mappedLID, err := lidStore.GetLIDForPN(ctx, types.NewJID("628123456", types.DefaultUserServer))
+		require.NoError(t, err)
+		assert.Equal(t, "100200300", mappedLID.User)
+	})
+
+	t.Run("storeGlobalSettings updates LIDMigrationTimestamp", func(t *testing.T) {
+		cli.Store.LIDMigrationTimestamp = 0
+		settings := &waHistorySync.GlobalSettings{
+			ChatDbLidMigrationTimestamp: proto.Int64(1700000999),
+		}
+		cli.storeGlobalSettings(ctx, settings)
+		assert.Equal(t, int64(1700000999), cli.Store.LIDMigrationTimestamp)
+	})
+
+	t.Run("storeCompanionMetaNonce updates nonce", func(t *testing.T) {
+		cli.storeCompanionMetaNonce(ctx, "nonce-xyz-123")
+		assert.Equal(t, "nonce-xyz-123", cli.Store.CompanionMetaNonce)
+	})
+
+	t.Run("storeHistoricalPNLIDMappings stores mappings", func(t *testing.T) {
+		mappings := []*waHistorySync.PhoneNumberToLIDMapping{
+			{
+				PnJID:  proto.String("628999999@s.whatsapp.net"),
+				LidJID: proto.String("888888888@lid"),
+			},
+		}
+		cli.storeHistoricalPNLIDMappings(ctx, mappings)
+
+		mappedLID, err := lidStore.GetLIDForPN(ctx, types.NewJID("628999999", types.DefaultUserServer))
+		require.NoError(t, err)
+		assert.Equal(t, "888888888", mappedLID.User)
+	})
+
+	t.Run("storeHistoricalMessageSecrets stores secrets and privacy tokens", func(t *testing.T) {
+		userPN := types.NewJID("628777777", types.DefaultUserServer)
+		userLID := types.NewJID("777777777", types.HiddenUserServer)
+		_ = lidStore.PutLIDMapping(ctx, userLID, userPN)
+
+		conversations := []*waHistorySync.Conversation{
+			{
+				ID:                     proto.String(userPN.String()),
+				TcToken:                []byte("tc-token-bytes"),
+				TcTokenTimestamp:       proto.Uint64(1700000000),
+				TcTokenSenderTimestamp: proto.Uint64(1700000001),
+				Messages: []*waHistorySync.HistorySyncMsg{
+					{
+						Message: &waWeb.WebMessageInfo{
+							Key: &waCommon.MessageKey{
+								FromMe: proto.Bool(true),
+								ID:     proto.String("HIST-MSG-1"),
+							},
+							MessageSecret: []byte("secret-key-12345"),
+						},
+					},
+				},
+			},
+		}
+
+		cli.storeHistoricalMessageSecrets(ctx, conversations)
+
+		secret, _, err := msgSecretStore.GetMessageSecret(ctx, userPN, devID, "HIST-MSG-1")
+		require.NoError(t, err)
+		assert.Equal(t, []byte("secret-key-12345"), secret)
+	})
+}
+
+func TestMessage_SendHistorySyncServerErrorReceipt(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Not logged in returns ErrNotLoggedIn", func(t *testing.T) {
+		cli := NewClient(&store.Device{}, waLog.Noop)
+		err := cli.SendHistorySyncServerErrorReceipt(ctx, "HIST-1", make([]byte, 32))
+		assert.ErrorIs(t, err, ErrNotLoggedIn)
+	})
+
+	t.Run("Success sends receipt node", func(t *testing.T) {
+		devID := types.NewJID("12345", types.DefaultUserServer)
+		cli := NewClient(&store.Device{ID: &devID}, waLog.Noop)
+
+		var sentNode waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			sentNode = node
+			return nil
+		}
+
+		mediaKey := make([]byte, 32)
+		for i := range mediaKey {
+			mediaKey[i] = byte(i)
+		}
+
+		err := cli.SendHistorySyncServerErrorReceipt(ctx, "HIST-123", mediaKey)
+		require.NoError(t, err)
+		assert.Equal(t, "receipt", sentNode.Tag)
+		assert.Equal(t, "server-error", sentNode.Attrs["type"])
+		assert.Equal(t, "HIST-123", sentNode.Attrs["id"])
+		assert.Equal(t, devID, sentNode.Attrs["to"])
+	})
+}
+
+func TestMessage_HandlePlaceholderResendResponse(t *testing.T) {
+	devID := types.NewJID("12345", types.DefaultUserServer)
+	cli := NewClient(&store.Device{ID: &devID}, waLog.Noop)
+
+	t.Run("Missing response part", func(t *testing.T) {
+		msg := &waE2E.PeerDataOperationRequestResponseMessage{
+			StanzaID: proto.String("STANZA-1"),
+			PeerDataOperationResult: []*waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult{
+				{},
+			},
+		}
+		ok := cli.handlePlaceholderResendResponse(msg)
+		assert.True(t, ok)
+	})
+
+	t.Run("Valid placeholder response dispatches message event", func(t *testing.T) {
+		var dispatched *events.Message
+		cli.AddEventHandler(func(evt any) {
+			if m, ok := evt.(*events.Message); ok {
+				dispatched = m
+			}
+		})
+
+		innerMsg := &waWeb.WebMessageInfo{
+			Key: &waCommon.MessageKey{
+				RemoteJID: proto.String("628123456@s.whatsapp.net"),
+				FromMe:    proto.Bool(false),
+				ID:        proto.String("MSG-RESEND-1"),
+			},
+			MessageTimestamp: proto.Uint64(1700000000),
+			Message: &waE2E.Message{
+				Conversation: new("hello from resend response"),
+			},
+		}
+		rawBytes, err := proto.Marshal(innerMsg)
+		require.NoError(t, err)
+
+		msg := &waE2E.PeerDataOperationRequestResponseMessage{
+			StanzaID: proto.String("STANZA-2"),
+			PeerDataOperationResult: []*waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult{
+				{
+					PlaceholderMessageResendResponse: &waE2E.PeerDataOperationRequestResponseMessage_PeerDataOperationResult_PlaceholderMessageResendResponse{
+						WebMessageInfoBytes: rawBytes,
+					},
+				},
+			},
+		}
+
+		ok := cli.handlePlaceholderResendResponse(msg)
+		assert.True(t, ok)
+		require.NotNil(t, dispatched)
+		assert.Equal(t, "STANZA-2", dispatched.UnavailableRequestID)
+		assert.Equal(t, "hello from resend response", dispatched.Message.GetConversation())
+	})
+}
+
+func TestMessage_HandleEncryptedMessage_Newsletter(t *testing.T) {
+	ctx := context.Background()
+	devID := types.NewJID("12345", types.DefaultUserServer)
+	cli := NewClient(&store.Device{ID: &devID, MsgSecrets: newMockCustomMsgSecretStore()}, waLog.Noop)
+
+	t.Run("Invalid message node sends nack parsing error", func(t *testing.T) {
+		var sentAcks []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			sentAcks = append(sentAcks, node)
+			return nil
+		}
+
+		invalidNode := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"id": "bad-msg-1",
+			},
+		}
+
+		cli.handleEncryptedMessage(ctx, invalidNode)
+		require.NotEmpty(t, sentAcks)
+		assert.Equal(t, "ack", sentAcks[0].Tag)
+		assert.Equal(t, int(NackParsingError), sentAcks[0].Attrs["error"])
+	})
+
+	t.Run("Encrypted message from newsletter delegates to plaintext handler", func(t *testing.T) {
+		var dispatched *events.Message
+		cli.AddEventHandler(func(evt any) {
+			if m, ok := evt.(*events.Message); ok {
+				dispatched = m
+			}
+		})
+
+		newsJID := types.NewJID("12036304@newsletter", types.NewsletterServer)
+		innerMsg := &waE2E.Message{
+			Conversation: new("newsletter plaintext"),
+		}
+		marshaled, err := proto.Marshal(innerMsg)
+		require.NoError(t, err)
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": newsJID,
+				"id":   "news-enc-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag:     "plaintext",
+					Content: marshaled,
+				},
+			},
+		}
+
+		cli.handleEncryptedMessage(ctx, node)
+		require.NotNil(t, dispatched)
+		assert.Equal(t, "newsletter plaintext", dispatched.Message.GetConversation())
+	})
 }
