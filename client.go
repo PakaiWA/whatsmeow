@@ -517,6 +517,9 @@ func (cli *Client) WaitForConnection(timeout time.Duration) bool {
 // Connect connects the client to the WhatsApp web websocket. After connection, it will either
 // authenticate if there's data in the device store, or emit a QREvent to set up a new link.
 func (cli *Client) Connect() error {
+	if cli == nil {
+		return ErrClientIsNil
+	}
 	return cli.ConnectContext(cli.BackgroundEventCtx)
 }
 
