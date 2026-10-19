@@ -10,6 +10,7 @@ import (
 	"context"
 
 	"go.mau.fi/libsignal/keys/prekey"
+	signalLogger "go.mau.fi/libsignal/logger"
 	"go.mau.fi/libsignal/protocol"
 	"go.mau.fi/libsignal/session"
 	"go.mau.fi/libsignal/state/record"
@@ -17,6 +18,19 @@ import (
 
 	"github.com/PakaiWA/whatsmeow/util/keys"
 )
+
+type noopSignalLogger struct{}
+
+func (n *noopSignalLogger) Debug(caller, message string)   {}
+func (n *noopSignalLogger) Info(caller, message string)    {}
+func (n *noopSignalLogger) Warning(caller, message string) {}
+func (n *noopSignalLogger) Error(caller, message string)   {}
+func (n *noopSignalLogger) Configure(settings string)      {}
+
+func init() {
+	var l signalLogger.Loggable = &noopSignalLogger{}
+	signalLogger.Setup(&l)
+}
 
 func createRealSession() *record.Session {
 	ctx := context.Background()

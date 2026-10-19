@@ -12,7 +12,7 @@
   - `group.go` — Pengelolaan grup WhatsApp (create, update, invite, participant management, ephemeral settings).
   - `newsletter.go` — Interaksi channel / saluran WhatsApp (newsletter metadata, follow, unfollow).
   - `pair.go`, `pair-code.go`, `pair-passkey.go`, `qrchan.go` — Mekanisme login (QR code scanning, phone pairing code, passkey authentication).
-  - `*_test.go` — Test suite komprehensif murni (unit test tanpa koneksi jaringan live) dengan mock WebSocket/Noise layer (`testutils_test.go` / `mockTestSocket`) yang mencakup upload, update, tctoken, send, sendfb, retry, request, reportingtoken, receipt, qrchan, newsletter, dan notification (≥ 80% coverage).
+  - `*_test.go` — Test suite komprehensif murni (unit test tanpa koneksi jaringan live) dengan mock WebSocket/Noise layer (`testutils_test.go` / `mockTestSocket`) yang mencakup upload, update, tctoken, send, sendfb, retry, request, reportingtoken, receipt, qrchan, newsletter, notification, pair-code, pair-passkey, prekeys, presence, privacysettings, push, group, handshake, internals, keepalive, armadillomessage, mediaconn, mediaretry, message, dan msgsecret (≥ 80% coverage per core module).
 - **Dependencies**: `github.com/coder/websocket`, `go.mau.fi/libsignal`, `google.golang.org/protobuf`, internal sub-packages (`store`, `socket`, `binary`, `types`, `proto`, `appstate`, `util`).
 - **Consumers**: Library consumers, bot applications, integrasi webhook, microservices perpesanan WhatsApp.
 - **External Integrations**: WhatsApp WebSocket endpoints (`wss://web.whatsapp.com/ws/chat`), CDN media WhatsApp.

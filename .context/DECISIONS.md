@@ -147,3 +147,18 @@
 - **Consequences**:
   - Positif: Test suite dapat dieksekusi cepat, 100% deterministik, bebas flakiness jaringan di CI, serta regresi protokol segera terdeteksi sedini mungkin.
   - Negatif: Setiap perubahan struktur node protobuf atau internal handling IQ mewajibkan penyesuaian payload fixture pada mock socket test.
+
+---
+
+## ADR-011: Exclusion of Test Files from SemVer Release Tagging in CI
+
+- **Status**: Accepted
+- **Date**: 2026-10-19
+- **Source**: Developer request & CI workflow enhancement (`.github/workflows/go.yaml`)
+- **Context**: Sebelumnya job `release` pada `.github/workflows/go.yaml` memicu pembuatan rilis SemVer baru (`vMAJOR.MINOR.PATCH`) setiap kali ada perubahan pada file `*.go`. Ketika developer hanya menambahkan atau memperbarui file pengujian (`*_test.go`), pipeline secara tidak perlu membuat rilis versi baru ke GitHub Releases dan mempublikasikan versi baru ke proxy Go.
+- **Decision**:
+  1. Menambahkan filter pengecualian `":(exclude)*_test.go"` pada perintah `git diff` dan `git log` di job release `.github/workflows/go.yaml`.
+  2. Jika perubahan sejak tag SemVer sebelumnya murni hanya terdiri dari file `*_test.go`, script release akan mencetak pesan dan keluar (`exit 0`) tanpa memotong tag rilis baru.
+- **Consequences**:
+  - Positif: Mencegah rilis versi SemVer palsu/berlebihan (release tag bloat) saat hanya melakukan penambahan atau refactoring unit test.
+  - Negatif: Jika sebuah rilis fitur sengaja dirilis bersamaan dengan unit test, setidaknya satu file non-test (`*.go` implementasi atau modul) harus terubah agar tag release terpicu.

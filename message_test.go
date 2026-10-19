@@ -79,7 +79,7 @@ func TestMessage_ParseMessageSource(t *testing.T) {
 			Tag: "message",
 			Attrs: waBinary.Attrs{
 				"from":            groupJID,
-				"participant":    participantJID,
+				"participant":     participantJID,
 				"participant_lid": lidJID,
 			},
 		}
@@ -172,10 +172,10 @@ func TestMessage_ParseMessageInfo_And_MetaBot(t *testing.T) {
 			Content: []waBinary.Node{{
 				Tag: "bot",
 				Attrs: waBinary.Attrs{
-					"edit":                 "inner",
-					"edit_target_id":       "target-123",
+					"edit":                "inner",
+					"edit_target_id":      "target-123",
 					"sender_timestamp_ms": "1700000000000",
-					"client_thread_id":     "thread-abc",
+					"client_thread_id":    "thread-abc",
 				},
 			}},
 		}

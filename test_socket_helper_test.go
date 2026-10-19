@@ -17,6 +17,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"go.mau.fi/libsignal/keys/prekey"
+	signalLogger "go.mau.fi/libsignal/logger"
 	"go.mau.fi/libsignal/session"
 	"go.mau.fi/libsignal/util/keyhelper"
 
@@ -26,6 +27,19 @@ import (
 	"github.com/PakaiWA/whatsmeow/util/keys"
 	waLog "github.com/PakaiWA/whatsmeow/util/log"
 )
+
+type noopSignalLogger struct{}
+
+func (n *noopSignalLogger) Debug(caller, message string)   {}
+func (n *noopSignalLogger) Info(caller, message string)    {}
+func (n *noopSignalLogger) Warning(caller, message string) {}
+func (n *noopSignalLogger) Error(caller, message string)   {}
+func (n *noopSignalLogger) Configure(settings string)      {}
+
+func init() {
+	var l signalLogger.Loggable = &noopSignalLogger{}
+	signalLogger.Setup(&l)
+}
 
 type mockSignalStores struct {
 	sessionsLock sync.RWMutex
