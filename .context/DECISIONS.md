@@ -216,8 +216,8 @@
 - **Context**: Sebelumnya pengujian di CI hanya mencetak output standar `go test -v` dan mengunggah `coverage.txt`. Tim tidak memiliki analitik performa eksekusi tes per suite (durasi eksekusi, identifikasi tes terlambat/lambat, deteksi *flaky tests*, dan pelacakan kegagalan historis) secara terpusat di dashboard Codecov.
 - **Decision**:
   1. **JUnit Exporter**: Menggunakan `gotestsum` (`gotest.tools/gotestsum@latest`) di pipeline CI untuk membungkus eksekusi `go test` dengan argumen `--junitfile junit.xml --format testname -- -race -coverprofile=coverage.txt -covermode=atomic ./...`.
-  2. **Codecov Test Analytics**: Mengintegrasikan `codecov/test-results-action@v1` dengan upload file `junit.xml` dan mapping flag matrix (`go-${{ matrix.go-version }}`).
+  2. **Codecov Test Analytics**: Menggunakan `codecov/codecov-action@v5` dengan parameter `report_type: test_results`, `files: junit.xml`, dan mapping flag matrix (`go-${{ matrix.go-version }}`) menggantikan action lama `test-results-action` yang sudah didepresiasi.
   3. **Repository Hygiene**: Menambahkan `junit.xml` ke `.gitignore` agar file artefak pengujian lokal tidak ter-commit ke git.
 - **Consequences**:
-  - Positif: CI menghasilkan telemetri lengkap per suite tes (durasi eksekusi, flaky tests, kegagalan granular) langsung di tab *Tests* Codecov dan GitHub Actions, tanpa membebani runtime binary aplikasi.
+  - Positif: CI menghasilkan telemetri lengkap per suite tes (durasi eksekusi, flaky tests, kegagalan granular) langsung di tab *Tests* Codecov dan GitHub Actions tanpa warning deprecation, menggunakan versi v5 terpadu.
   - Negatif: Memerlukan dependensi CLI tool `gotestsum` yang di-install saat setup runner CI.
