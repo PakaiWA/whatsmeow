@@ -11,18 +11,23 @@ import (
 	"compress/zlib"
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	waBinary "github.com/PakaiWA/whatsmeow/binary"
+	"github.com/PakaiWA/whatsmeow/proto/waAdv"
 	"github.com/PakaiWA/whatsmeow/proto/waCommon"
 	"github.com/PakaiWA/whatsmeow/proto/waE2E"
 	"github.com/PakaiWA/whatsmeow/proto/waHistorySync"
 	"github.com/PakaiWA/whatsmeow/proto/waLidMigrationSyncPayload"
 	"github.com/PakaiWA/whatsmeow/proto/waWeb"
 	"github.com/PakaiWA/whatsmeow/store"
+	"github.com/PakaiWA/whatsmeow/store/sqlstore"
 	"github.com/PakaiWA/whatsmeow/types"
 	"github.com/PakaiWA/whatsmeow/types/events"
 	waLog "github.com/PakaiWA/whatsmeow/util/log"
@@ -721,5 +726,525 @@ func TestMessage_HandleEncryptedMessage_Newsletter(t *testing.T) {
 		cli.handleEncryptedMessage(ctx, node)
 		require.NotNil(t, dispatched)
 		assert.Equal(t, "newsletter plaintext", dispatched.Message.GetConversation())
+	})
+}
+
+func TestMessage_DecryptMessages_UnavailableAndErrors(t *testing.T) {
+	ctx := context.Background()
+	container, err := sqlstore.New(ctx, "sqlite3", "file:test_decrypt_err?mode=memory&cache=shared&_foreign_keys=on", waLog.Noop)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = container.Close() })
+
+	dev := container.NewDevice()
+	devID := types.NewJID("628123456", types.DefaultUserServer)
+	dev.ID = &devID
+	dev.LID = types.NewJID("628123456", types.HiddenUserServer)
+	dev.Account = &waAdv.ADVSignedDeviceIdentity{
+		Details:             []byte("details"),
+		AccountSignature:    make([]byte, 64),
+		AccountSignatureKey: make([]byte, 32),
+		DeviceSignature:     make([]byte, 64),
+	}
+	require.NoError(t, dev.Save(ctx))
+
+	cli := NewClient(dev, waLog.Noop)
+	cli.SynchronousAck = true
+
+	t.Run("Unavailable node dispatches UndecryptableMessage and sends ack", func(t *testing.T) {
+		var sentAcks []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "ack" {
+				sentAcks = append(sentAcks, node)
+			}
+			return nil
+		}
+
+		var undecryptable *events.UndecryptableMessage
+		cli.AddEventHandler(func(evt any) {
+			if u, ok := evt.(*events.UndecryptableMessage); ok {
+				undecryptable = u
+			}
+		})
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": devID,
+				"id":   "unavail-msg-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag: "unavailable",
+					Attrs: waBinary.Attrs{
+						"type": "view_once",
+					},
+				},
+			},
+		}
+
+		info, err := cli.parseMessageInfo(node)
+		require.NoError(t, err)
+		cli.decryptMessages(ctx, info, node)
+
+		require.NotNil(t, undecryptable)
+		assert.True(t, undecryptable.IsUnavailable)
+		assert.Equal(t, events.UnavailableType("view_once"), undecryptable.UnavailableType)
+		assert.NotEmpty(t, sentAcks)
+		assert.Equal(t, "unavail-msg-1", sentAcks[0].Attrs["id"])
+	})
+
+	t.Run("Unrecognized enc node sends receipt because stanza has enc tag", func(t *testing.T) {
+		var sentReceipts []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "receipt" {
+				sentReceipts = append(sentReceipts, node)
+			}
+			return nil
+		}
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": devID,
+				"id":   "unknown-enc-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag: "enc",
+					Attrs: waBinary.Attrs{
+						"type": "future_unknown_type",
+					},
+				},
+			},
+		}
+
+		info, err := cli.parseMessageInfo(node)
+		require.NoError(t, err)
+		cli.decryptMessages(ctx, info, node)
+
+		require.NotEmpty(t, sentReceipts)
+		assert.Equal(t, "receipt", sentReceipts[0].Tag)
+	})
+
+	t.Run("No enc child sends NackUnrecognizedStanza", func(t *testing.T) {
+		var sentAcks []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "ack" {
+				sentAcks = append(sentAcks, node)
+			}
+			return nil
+		}
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": devID,
+				"id":   "no-enc-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{Tag: "something_else"},
+			},
+		}
+
+		info, err := cli.parseMessageInfo(node)
+		require.NoError(t, err)
+		cli.decryptMessages(ctx, info, node)
+
+		require.NotEmpty(t, sentAcks)
+		assert.Equal(t, int(NackUnrecognizedStanza), sentAcks[0].Attrs["error"])
+	})
+
+	t.Run("Failed DM decryption triggers UndecryptableMessage and retry receipt", func(t *testing.T) {
+		var sentReceipts []waBinary.Node
+		var sentAcks []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "receipt" {
+				sentReceipts = append(sentReceipts, node)
+			} else if node.Tag == "ack" {
+				sentAcks = append(sentAcks, node)
+			}
+			return nil
+		}
+
+		var undecryptable *events.UndecryptableMessage
+		cli.AddEventHandler(func(evt any) {
+			if u, ok := evt.(*events.UndecryptableMessage); ok {
+				undecryptable = u
+			}
+		})
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": devID,
+				"id":   "bad-cipher-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag: "enc",
+					Attrs: waBinary.Attrs{
+						"type": "msg",
+						"v":    "2",
+					},
+					Content: []byte("corrupted signal ciphertext bytes"),
+				},
+			},
+		}
+
+		info, err := cli.parseMessageInfo(node)
+		require.NoError(t, err)
+		cli.decryptMessages(ctx, info, node)
+
+		require.NotNil(t, undecryptable)
+		assert.Equal(t, "bad-cipher-1", undecryptable.Info.ID)
+		assert.NotEmpty(t, sentReceipts)
+		assert.Equal(t, "retry", sentReceipts[0].Attrs["type"])
+		assert.NotEmpty(t, sentAcks)
+	})
+
+	t.Run("Failed DM prekey decryption triggers UndecryptableMessage and retry receipt", func(t *testing.T) {
+		var sentReceipts []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "receipt" {
+				sentReceipts = append(sentReceipts, node)
+			}
+			return nil
+		}
+
+		var undecryptable *events.UndecryptableMessage
+		cli.AddEventHandler(func(evt any) {
+			if u, ok := evt.(*events.UndecryptableMessage); ok {
+				undecryptable = u
+			}
+		})
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": devID,
+				"id":   "bad-pk-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag: "enc",
+					Attrs: waBinary.Attrs{
+						"type":  "pkmsg",
+						"state": "false",
+						"v":     "2",
+					},
+					Content: []byte("invalid-prekey-message-bytes"),
+				},
+			},
+		}
+
+		info, err := cli.parseMessageInfo(node)
+		require.NoError(t, err)
+		cli.decryptMessages(ctx, info, node)
+
+		require.NotNil(t, undecryptable)
+		assert.Equal(t, "bad-pk-1", undecryptable.Info.ID)
+		assert.NotEmpty(t, sentReceipts)
+		assert.Equal(t, "retry", sentReceipts[0].Attrs["type"])
+	})
+
+	t.Run("Group skmsg decryption failure triggers UndecryptableMessage and retry receipt", func(t *testing.T) {
+		groupJID := types.NewJID("12036304@g.us", types.GroupServer)
+		var sentReceipts []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "receipt" {
+				sentReceipts = append(sentReceipts, node)
+			}
+			return nil
+		}
+
+		var undecryptable *events.UndecryptableMessage
+		cli.AddEventHandler(func(evt any) {
+			if u, ok := evt.(*events.UndecryptableMessage); ok {
+				undecryptable = u
+			}
+		})
+
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from":        groupJID,
+				"participant": devID,
+				"id":          "bad-skmsg-1",
+				"t":           "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag: "enc",
+					Attrs: waBinary.Attrs{
+						"type": "skmsg",
+						"v":    "2",
+					},
+					Content: []byte("corrupted group skmsg bytes"),
+				},
+			},
+		}
+
+		info, err := cli.parseMessageInfo(node)
+		require.NoError(t, err)
+		cli.decryptMessages(ctx, info, node)
+
+		require.NotNil(t, undecryptable)
+		assert.Equal(t, "bad-skmsg-1", undecryptable.Info.ID)
+		assert.NotEmpty(t, sentReceipts)
+		assert.Equal(t, "retry", sentReceipts[0].Attrs["type"])
+	})
+
+	t.Run("Bot msmsg decryption failure sends NackMissingMessageSecret", func(t *testing.T) {
+		var sentAcks []waBinary.Node
+		cli.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "ack" {
+				sentAcks = append(sentAcks, node)
+			}
+			return nil
+		}
+
+		botJID := types.NewJID("867051314767696", types.BotServer)
+		node := &waBinary.Node{
+			Tag: "message",
+			Attrs: waBinary.Attrs{
+				"from": botJID,
+				"id":   "bot-msmsg-1",
+				"t":    "1700000000",
+			},
+			Content: []waBinary.Node{
+				{
+					Tag: "enc",
+					Attrs: waBinary.Attrs{
+						"type": "msmsg",
+					},
+					Content: []byte("bot msg bytes"),
+				},
+			},
+		}
+
+		info, err := cli.parseMessageInfo(node)
+		require.NoError(t, err)
+		cli.decryptMessages(ctx, info, node)
+
+		require.NotEmpty(t, sentAcks)
+		assert.Equal(t, int(NackMissingMessageSecret), sentAcks[0].Attrs["error"])
+	})
+}
+
+func TestMessage_BufferedDecrypt(t *testing.T) {
+	ctx := context.Background()
+	devID := types.NewJID("628123456", types.DefaultUserServer)
+	cli := NewClient(&store.Device{ID: &devID}, waLog.Noop)
+
+	t.Run("Disabled buffer runs decrypt directly", func(t *testing.T) {
+		cli.EnableDecryptedEventBuffer = false
+		cipherBytes := []byte("plain ciphertext")
+		called := false
+		pt, hash, err := cli.bufferedDecrypt(ctx, cipherBytes, time.Now(), func(context.Context) ([]byte, error) {
+			called = true
+			return []byte("decrypted result"), nil
+		})
+		require.NoError(t, err)
+		assert.True(t, called)
+		assert.Equal(t, []byte("decrypted result"), pt)
+		assert.Equal(t, [32]byte{}, hash)
+	})
+}
+
+func TestMessage_ProcessProtocolPartsAndSecrets(t *testing.T) {
+	ctx := context.Background()
+	devID := types.NewJID("628123456", types.DefaultUserServer)
+	msgSecretStore := newMockCustomMsgSecretStore()
+	dev := &store.Device{
+		ID:         &devID,
+		MsgSecrets: msgSecretStore,
+	}
+	cli := NewClient(dev, waLog.Noop)
+
+	t.Run("Store message secret from rootSecretDistributeMessage", func(t *testing.T) {
+		info := &types.MessageInfo{
+			MessageSource: types.MessageSource{
+				Chat:     devID,
+				Sender:   devID,
+				IsFromMe: true,
+			},
+			ID: "SECRET-MSG-1",
+		}
+
+		msg := &waE2E.Message{
+			MessageContextInfo: &waE2E.MessageContextInfo{
+				MessageSecret: []byte("very-secret-key-32-bytes-long!"),
+			},
+			DeviceSentMessage: &waE2E.DeviceSentMessage{
+				Message: &waE2E.Message{
+					RootSecretDistributeMessage: &waE2E.RootSecretDistributeMessage{
+						ChatJID: proto.String("628999999@s.whatsapp.net"),
+					},
+				},
+			},
+		}
+
+		ok := cli.processProtocolParts(ctx, info, msg)
+		assert.True(t, ok)
+
+		targetChat := types.NewJID("628999999", types.DefaultUserServer)
+		secret, _, err := cli.Store.MsgSecrets.GetMessageSecret(ctx, targetChat, devID, "SECRET-MSG-1")
+		require.NoError(t, err)
+		assert.Equal(t, []byte("very-secret-key-32-bytes-long!"), secret)
+	})
+
+	t.Run("Process sender key distribution message error parsing bytes", func(t *testing.T) {
+		groupJID := types.NewJID("12036304@g.us", types.GroupServer)
+		info := &types.MessageInfo{
+			MessageSource: types.MessageSource{
+				Chat:    groupJID,
+				Sender:  devID,
+				IsGroup: true,
+			},
+			ID: "SKDM-MSG-1",
+		}
+
+		msg := &waE2E.Message{
+			SenderKeyDistributionMessage: &waE2E.SenderKeyDistributionMessage{
+				AxolotlSenderKeyDistributionMessage: []byte("invalid-skdm-protobuf-bytes"),
+			},
+		}
+
+		ok := cli.processProtocolParts(ctx, info, msg)
+		assert.True(t, ok)
+	})
+
+	t.Run("Sender key distribution in non-group chat is ignored", func(t *testing.T) {
+		info := &types.MessageInfo{
+			MessageSource: types.MessageSource{
+				Chat:    devID,
+				Sender:  devID,
+				IsGroup: false,
+			},
+			ID: "SKDM-NON-GROUP",
+		}
+
+		msg := &waE2E.Message{
+			SenderKeyDistributionMessage: &waE2E.SenderKeyDistributionMessage{
+				AxolotlSenderKeyDistributionMessage: []byte("skdm"),
+			},
+		}
+
+		ok := cli.processProtocolParts(ctx, info, msg)
+		assert.True(t, ok)
+	})
+}
+
+func TestMessage_HandleProtocolMessage(t *testing.T) {
+	ctx := context.Background()
+	devID := types.NewJID("628123456", types.DefaultUserServer)
+	dev := &store.Device{
+		ID:         &devID,
+		LIDs:       newMockLIDStore(),
+		MsgSecrets: newMockCustomMsgSecretStore(),
+	}
+	cli := NewClient(dev, waLog.Noop)
+
+	t.Run("Not FromMe returns ok true immediately", func(t *testing.T) {
+		info := &types.MessageInfo{
+			MessageSource: types.MessageSource{
+				Chat:     devID,
+				Sender:   devID,
+				IsFromMe: false,
+			},
+			ID: "PROTO-NOT-FROM-ME",
+		}
+		msg := &waE2E.Message{
+			ProtocolMessage: &waE2E.ProtocolMessage{},
+		}
+		ok := cli.handleProtocolMessage(ctx, info, msg)
+		assert.True(t, ok)
+	})
+
+	t.Run("HistorySyncNotification with manual download and receipt", func(t *testing.T) {
+		client := NewClient(dev, waLog.Noop)
+		client.ManualHistorySyncDownload = true
+		client.DisableManualHistorySyncReceipt = false
+		receiptChan := make(chan string, 1)
+		client.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "receipt" {
+				if rType, ok := node.Attrs["type"].(string); ok {
+					select {
+					case receiptChan <- rType:
+					default:
+					}
+				}
+			}
+			return nil
+		}
+
+		info := &types.MessageInfo{
+			MessageSource: types.MessageSource{
+				Chat:     devID,
+				Sender:   devID,
+				IsFromMe: true,
+			},
+			ID: "HIST-PROTO-1",
+		}
+		msg := &waE2E.Message{
+			ProtocolMessage: &waE2E.ProtocolMessage{
+				HistorySyncNotification: &waE2E.HistorySyncNotification{
+					FileSHA256: []byte("sha256-bytes"),
+				},
+			},
+		}
+
+		ok := client.handleProtocolMessage(ctx, info, msg)
+		assert.True(t, ok)
+
+		select {
+		case rType := <-receiptChan:
+			assert.Equal(t, string(types.ReceiptTypeHistorySync), rType)
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("timed out waiting for history sync receipt")
+		}
+	})
+
+	t.Run("Peer category sends peer msg receipt", func(t *testing.T) {
+		client := NewClient(dev, waLog.Noop)
+		sentChan := make(chan waBinary.Node, 1)
+		client.sendNodeHook = func(_ context.Context, node waBinary.Node) error {
+			if node.Tag == "receipt" {
+				select {
+				case sentChan <- node:
+				default:
+				}
+			}
+			return nil
+		}
+
+		info := &types.MessageInfo{
+			MessageSource: types.MessageSource{
+				Chat:     devID,
+				Sender:   devID,
+				IsFromMe: true,
+			},
+			ID:       "PEER-PROTO-1",
+			Category: "peer",
+		}
+		msg := &waE2E.Message{
+			ProtocolMessage: &waE2E.ProtocolMessage{},
+		}
+
+		ok := client.handleProtocolMessage(ctx, info, msg)
+		assert.True(t, ok)
+
+		select {
+		case sentNode := <-sentChan:
+			assert.Equal(t, "receipt", sentNode.Tag)
+			assert.Equal(t, string(types.ReceiptTypePeerMsg), sentNode.Attrs["type"])
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("timed out waiting for peer receipt")
+		}
 	})
 }
