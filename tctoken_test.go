@@ -9,6 +9,7 @@ package whatsmeow
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 )
 
 type mockPrivacyTokenStore struct {
+	sync.RWMutex
 	tokens map[types.JID]*store.PrivacyToken
 	getErr error
 	putErr error
@@ -34,7 +36,21 @@ func newMockPrivacyTokenStore() *mockPrivacyTokenStore {
 	}
 }
 
+func (m *mockPrivacyTokenStore) setToken(user types.JID, tok *store.PrivacyToken) {
+	m.Lock()
+	defer m.Unlock()
+	m.tokens[user] = tok
+}
+
+func (m *mockPrivacyTokenStore) getToken(user types.JID) *store.PrivacyToken {
+	m.RLock()
+	defer m.RUnlock()
+	return m.tokens[user]
+}
+
 func (m *mockPrivacyTokenStore) PutPrivacyTokens(_ context.Context, tokens ...store.PrivacyToken) error {
+	m.Lock()
+	defer m.Unlock()
 	if m.putErr != nil {
 		return m.putErr
 	}
@@ -46,6 +62,8 @@ func (m *mockPrivacyTokenStore) PutPrivacyTokens(_ context.Context, tokens ...st
 }
 
 func (m *mockPrivacyTokenStore) GetPrivacyToken(_ context.Context, user types.JID) (*store.PrivacyToken, error) {
+	m.RLock()
+	defer m.RUnlock()
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
@@ -53,6 +71,8 @@ func (m *mockPrivacyTokenStore) GetPrivacyToken(_ context.Context, user types.JI
 }
 
 func (m *mockPrivacyTokenStore) DeleteExpiredPrivacyTokens(_ context.Context, cutoff time.Time) (int64, error) {
+	m.Lock()
+	defer m.Unlock()
 	if m.delErr != nil {
 		return 0, m.delErr
 	}
@@ -221,11 +241,11 @@ func TestTCToken_EnsureTCToken(t *testing.T) {
 
 	t.Run("Existing token expired or missing", func(t *testing.T) {
 		pStore := newMockPrivacyTokenStore()
-		pStore.tokens[user] = &store.PrivacyToken{
+		pStore.setToken(user, &store.PrivacyToken{
 			User:      user,
 			Token:     []byte("expired-token"),
 			Timestamp: time.Now().Add(-60 * 24 * time.Hour),
-		}
+		})
 		device := &store.Device{
 			ID:            &types.JID{User: "me", Server: types.DefaultUserServer},
 			LIDs:          newMockLIDStore(),
@@ -243,11 +263,11 @@ func TestTCToken_IssuePrivacyTokenAndSave(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		pStore := newMockPrivacyTokenStore()
-		pStore.tokens[user] = &store.PrivacyToken{
+		pStore.setToken(user, &store.PrivacyToken{
 			User:      user,
 			Token:     []byte("test-token"),
 			Timestamp: time.Now(),
-		}
+		})
 		device := &store.Device{
 			ID:            &types.JID{User: "me", Server: types.DefaultUserServer},
 			LIDs:          newMockLIDStore(),
@@ -264,7 +284,9 @@ func TestTCToken_IssuePrivacyTokenAndSave(t *testing.T) {
 		cli.issuePrivacyTokenAndSave(user, senderTS)
 
 		assert.Equal(t, senderTS, cli.getTCTokenSenderTS(user))
-		assert.Equal(t, senderTS, pStore.tokens[user].SenderTimestamp)
+		tok := pStore.getToken(user)
+		require.NotNil(t, tok)
+		assert.Equal(t, senderTS, tok.SenderTimestamp)
 	})
 
 	t.Run("IssuePrivacyToken error", func(t *testing.T) {
@@ -296,10 +318,10 @@ func TestTCToken_IssuePrivacyTokenAndSave(t *testing.T) {
 
 	t.Run("PutPrivacyTokens error", func(t *testing.T) {
 		pStore := newMockPrivacyTokenStore()
-		pStore.tokens[user] = &store.PrivacyToken{
+		pStore.setToken(user, &store.PrivacyToken{
 			User:  user,
 			Token: []byte("some-token"),
-		}
+		})
 		pStore.putErr = errors.New("put error")
 		device := &store.Device{
 			ID:            &types.JID{User: "me", Server: types.DefaultUserServer},
@@ -314,10 +336,10 @@ func TestTCToken_IssuePrivacyTokenAndSave(t *testing.T) {
 
 	t.Run("Existing token is empty", func(t *testing.T) {
 		pStore := newMockPrivacyTokenStore()
-		pStore.tokens[user] = &store.PrivacyToken{
+		pStore.setToken(user, &store.PrivacyToken{
 			User:  user,
 			Token: nil,
-		}
+		})
 		device := &store.Device{
 			ID:            &types.JID{User: "me", Server: types.DefaultUserServer},
 			PrivacyTokens: pStore,
@@ -335,14 +357,14 @@ func TestTCToken_DeleteExpiredPrivacyTokens(t *testing.T) {
 		pStore := newMockPrivacyTokenStore()
 		userOld := types.NewJID("old", types.DefaultUserServer)
 		userNew := types.NewJID("new", types.DefaultUserServer)
-		pStore.tokens[userOld] = &store.PrivacyToken{
+		pStore.setToken(userOld, &store.PrivacyToken{
 			User:      userOld,
 			Timestamp: time.Now().Add(-60 * 24 * time.Hour),
-		}
-		pStore.tokens[userNew] = &store.PrivacyToken{
+		})
+		pStore.setToken(userNew, &store.PrivacyToken{
 			User:      userNew,
 			Timestamp: time.Now(),
-		}
+		})
 
 		device := &store.Device{
 			ID:            &types.JID{User: "me", Server: types.DefaultUserServer},
@@ -352,10 +374,9 @@ func TestTCToken_DeleteExpiredPrivacyTokens(t *testing.T) {
 		// Force prune
 		cli.lastTCTokenDBPrune = time.Now().Add(-48 * time.Hour)
 		cli.deleteExpiredPrivacyTokens()
-		time.Sleep(50 * time.Millisecond)
-
-		assert.Nil(t, pStore.tokens[userOld])
-		assert.NotNil(t, pStore.tokens[userNew])
+		assert.Eventually(t, func() bool {
+			return pStore.getToken(userOld) == nil && pStore.getToken(userNew) != nil
+		}, 1*time.Second, 10*time.Millisecond)
 
 		// Calling again immediately skips prune because interval hasn't passed
 		cli.deleteExpiredPrivacyTokens()
