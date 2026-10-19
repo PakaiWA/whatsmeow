@@ -277,19 +277,24 @@ func (device *Device) GetLID() types.JID {
 var ErrDeviceDeleted = errors.New("invalid use of deleted device")
 
 func (device *Device) Save(ctx context.Context) error {
-	if device.Deleted {
+	if device == nil || device.Deleted {
 		return ErrDeviceDeleted
+	}
+	if device.Container == nil {
+		return nil
 	}
 	return device.Container.PutDevice(ctx, device)
 }
 
 func (device *Device) Delete(ctx context.Context) error {
-	if device.Deleted {
+	if device == nil || device.Deleted {
 		return nil
 	}
-	err := device.Container.DeleteDevice(ctx, device)
-	if err != nil {
-		return err
+	if device.Container != nil {
+		err := device.Container.DeleteDevice(ctx, device)
+		if err != nil {
+			return err
+		}
 	}
 	device.ID = nil
 	device.LID = types.EmptyJID
