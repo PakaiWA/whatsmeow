@@ -7,7 +7,7 @@
 
 ## 2. Existing Code Annotations (TODO / FIXME)
 - `msgsecret.go:133`: `// TODO this is wrong if the message key used @s.whatsapp.net, but the new event is from @lid`
-- `types/user.go:202`: `// TODO is this just a timestamp?` (field `DHash`)
+- `types/user.go:211`: `// TODO is this just a timestamp?` (field `DHash`)
 - `user.go:170`: `// TODO check output result?`
 - `user.go:430`: `// TODO parse bot_fields`
 - `user.go:816`: `// TODO take identities here too?`
@@ -19,18 +19,28 @@
 - `message.go:426`: `// TODO this probably isn't supposed to ack`
 - `download.go:161`: `// TODO more proper check for unencrypted media? (also Download and DownloadToFile)`
 - `download.go:276`: `// TODO omit hash for unencrypted media?`
-- `appstate.go:299`: `// TODO what's index 2 here?`
-- `appstate.go:554`: `// TODO create new key instead of reusing the primary client's keys`
-- `send.go:217`: `// TODO somehow deduplicate this with the code in sendNewsletter?`
-- `send.go:313`: `// TODO this is fairly hacky, is there a proper way to determine which identity the message is sent with?`
-- `send.go:1215`: `// TODO this is a very hacky hack for announcement group messages, why is it pn anyway?`
-- `send.go:1318`: `// TODO query LID from server for missing entries`
-- `send.go:1354`: `// TODO return these errors if it's a fatal one (like context cancellation or database)`
-- `group.go:57`: `// TODO member_share_group_history_mode`
-- `group.go:767`: `// TODO confirm field name (group.TopicSetByPN)`
+- `appstate.go:301`: `// TODO what's index 2 here?`
+- `appstate.go:556`: `// TODO create new key instead of reusing the primary client's keys`
+- `send.go:220`: `// TODO somehow deduplicate this with the code in sendNewsletter?`
+- `send.go:316`: `// TODO this is fairly hacky, is there a proper way to determine which identity the message is sent with?`
+- `send.go:474`: `// TODO also invalidate device list caches`
+- `send.go:1222`: `// TODO this is a very hacky hack for announcement group messages, why is it pn anyway?`
+- `send.go:1325`: `// TODO query LID from server for missing entries`
+- `send.go:1361`: `// TODO return these errors if it's a fatal one (like context cancellation or database)`
+- `sendfb.go:206`: `// TODO also invalidate device list caches`
+- `sendfb.go:394`: `// TODO gifPlayback?`
+- `sendfb.go:570`: `// TODO return these errors if it's a fatal one (like context cancellation or database)`
+- `group.go:60`: `// TODO member_share_group_history_mode`
+- `group.go:120`: `// TODO what's this? (trigger: 1)`
+- `group.go:776`: `// TODO confirm field name (group.TopicSetByPN)`
+- `group.go:1029`: `// TODO can the addressing mode change here?`
+- `newsletter.go:79`: `// TODO handle response?`
 - `retry.go:281`: `// TODO pre-retry callback for fb`
+- `notification.go:103`: `// TODO sometimes there's a hash and no ID?`
+- `broadcast.go:77`: `// TODO should there be a better way to separate contacts and found push names in the db?`
 
 ## 3. Technical Debt & Structural Improvements
 - [ ] **LID vs Phone Number Normalization**: Penyempurnaan mapping otomatis antara Phone Number (PN) dan Privacy LID yang mulai diwajibkan WhatsApp pada update protokol terbaru (`send.go`, `user.go`).
 - [ ] **Media Deduplication**: Konsolidasi fungsi duplikasi antara `download.go` dan `download-to-file.go` serta logika upload newsletter di `send.go`.
+- [ ] **Unit Testing Expansion**: Melanjutkan pengujian unit murni berbasis `mockTestSocket` untuk modul kompleks lain (`message.go`, `client.go`, `group.go`, `appstate.go`) mempertahankan batas minimal coverage ≥ 80% tanpa ketergantungan jaringan.
 - [ ] **Upstream Synchronization Cadence**: Mengotomatiskan pengecekan berkala terhadap repo upstream `tulir/whatsmeow` dengan mempertahankan branding dan spesifikasi keamanan `PakaiWA`.

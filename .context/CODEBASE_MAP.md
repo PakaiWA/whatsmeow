@@ -12,10 +12,11 @@
   - `group.go` — Pengelolaan grup WhatsApp (create, update, invite, participant management, ephemeral settings).
   - `newsletter.go` — Interaksi channel / saluran WhatsApp (newsletter metadata, follow, unfollow).
   - `pair.go`, `pair-code.go`, `pair-passkey.go`, `qrchan.go` — Mekanisme login (QR code scanning, phone pairing code, passkey authentication).
+  - `*_test.go` — Test suite komprehensif murni (unit test tanpa koneksi jaringan live) dengan mock WebSocket/Noise layer (`testutils_test.go` / `mockTestSocket`) yang mencakup upload, update, tctoken, send, sendfb, retry, request, reportingtoken, receipt, qrchan, newsletter, dan notification (≥ 80% coverage).
 - **Dependencies**: `github.com/coder/websocket`, `go.mau.fi/libsignal`, `google.golang.org/protobuf`, internal sub-packages (`store`, `socket`, `binary`, `types`, `proto`, `appstate`, `util`).
 - **Consumers**: Library consumers, bot applications, integrasi webhook, microservices perpesanan WhatsApp.
 - **External Integrations**: WhatsApp WebSocket endpoints (`wss://web.whatsapp.com/ws/chat`), CDN media WhatsApp.
-- **Key Notes**: Fork dari `tulir/whatsmeow` dengan kustomisasi identitas modul `github.com/PakaiWA/whatsmeow` dan security hardening.
+- **Key Notes**: Fork dari `tulir/whatsmeow` dengan kustomisasi identitas modul `github.com/PakaiWA/whatsmeow`, security hardening, dan arsitektur pengujian in-memory mock socket.
 
 ---
 

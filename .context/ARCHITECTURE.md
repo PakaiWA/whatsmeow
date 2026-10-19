@@ -166,3 +166,18 @@ graph TD
   - Menangani isolasi ketat antara nomor telepon biasa (`types.DefaultUserServer` = `@s.whatsapp.net`), privasi LID (`types.HiddenUserServer` = `@lid`), grup (`types.GroupServer` = `@g.us`), dan channel (`types.NewsletterServer` = `@newsletter`).
 - **Store Separation**:
   - Persistence terisolasi penuh di package `store/`. Logic protokol client tidak pernah memanggil raw SQL langsung, melainkan melalui interface `store.Device` dan `store.DeviceContainer`.
+
+---
+
+## 7. Testing & Mock Architecture
+
+- **Zero-Network In-Memory Test Harness**:
+  - Menggunakan `mockTestSocket` pada internal test suite (`testutils_test.go` & `*_test.go`) untuk mensimulasikan full duplex frame transport tanpa membuka koneksi internet / websocket sungguhan ke WhatsApp.
+  - Memanfaatkan in-memory buffered channel untuk menyuntikkan node `waBinary.Node` yang valid maupun error, mencakup:
+    - IQ response matching (`responseWaiters`).
+    - Media upload mocking via HTTP `httptest.Server`.
+    - Message sending and encryption fallback pipeline.
+    - Privacy token / TC token storage dan cache validation.
+- **Race Condition Immunity**:
+  - Seluruh test diverifikasi dengan Go race detector (`go test -race`).
+  - Cache dan mock database menggunakan thread-safe memory lock (`sync.RWMutex`) untuk menjamin zero data races pada concurrent frame processing.

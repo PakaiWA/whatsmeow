@@ -130,3 +130,20 @@
 - **Consequences**:
   - Positif: Mencegah eksekusi build/test dan tagging release SemVer otomatis yang berlebihan saat hanya memperbarui dokumentasi atau file non-runtime. Konsistensi ekstensi file YAML di seluruh repositori.
   - Negatif: Perubahan konfigurasi workflow baru atau build script di luar filter di atas harus mendaftarkan ekstensinya ke `paths` jika ingin memicu CI release.
+
+---
+
+## ADR-010: Pure Unit Test Standard with In-Memory Mock Socket Architecture
+
+- **Status**: Accepted
+- **Date**: 2026-10-19
+- **Source**: Unit test overhaul and Codecov integration (`*_test.go`, `.github/workflows/go.yaml`)
+- **Context**: Sebelumnya banyak modul inti (`upload.go`, `send.go`, `request.go`, `retry.go`, `receipt.go`, `newsletter.go`, dsb.) belum memiliki unit test murni yang terisolasi tanpa koneksi jaringan live ke server WhatsApp. Pengujian berbasis end-to-end langsung ke WhatsApp Web rentan flakiness, rate limiting, dan tidak dapat dijalankan secara deterministik di CI.
+- **Decision**:
+  1. Menerapkan standar unit test murni (*zero network dependency*) di mana setiap modul inti harus memiliki cakupan pengujian pernyataan minimal ≥ 80% (statement coverage).
+  2. Membangun abstraksi pengujian menggunakan in-memory mock socket (`mockTestSocket`) yang mereplikasi handshake Noise dan WebSocket frame loop tanpa I/O jaringan sungguhan.
+  3. Memisahkan pengujian dengan simulasi response node (`waBinary.Node`) deterministik untuk skenario sukses, error IQ, error status code, dan context cancellation.
+  4. Mengharuskan verifikasi thread-safety bebas data race di bawah flag `go test -race` dan upload coverage profile atomic ke Codecov.
+- **Consequences**:
+  - Positif: Test suite dapat dieksekusi cepat, 100% deterministik, bebas flakiness jaringan di CI, serta regresi protokol segera terdeteksi sedini mungkin.
+  - Negatif: Setiap perubahan struktur node protobuf atau internal handling IQ mewajibkan penyesuaian payload fixture pada mock socket test.

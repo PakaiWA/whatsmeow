@@ -63,6 +63,10 @@
     - `proto-convert`: Regenerasi `.pb.go` dari file `.proto` di dalam `proto/`.
     - `go-imports-repo`: Pengurutan import otomatis dengan `-local github.com/PakaiWA/whatsmeow -w`.
     - `staticcheck` & `go-vet`: Pengecekan kualitas kode dan static analysis.
+  - **Testing & Quality Standards**:
+    - Wajib unit test murni (*zero-network dependency*) dengan target coverage pernyataan minimal ≥ 80% (statement coverage) untuk modul inti.
+    - Semua test wajib lolos pemeriksaan thread safety tanpa data race (`go test -v -race -covermode=atomic ./...`).
+    - Laporan coverage diunggah otomatis ke Codecov via workflow CI.
   - **Device Fingerprint**: Metadata `DeviceProps OS` wajib menggunakan identitas platform `PakaiWA`.
   - **CI Environment**: Runner GitHub Actions dikunci ke `ubuntu-24.04` dengan ekstensi file workflow terstandarisasi `.yaml`.
   - **Licensing & Attribution**: Lisensi MPL-2.0 dengan atribusi ganda eksplisit (Tulir Asokan 2021-2026 & Kelvin Anggara, PakaiWA Developers and Contributors 2025-2026).
