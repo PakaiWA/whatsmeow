@@ -162,3 +162,19 @@
 - **Consequences**:
   - Positif: Mencegah rilis versi SemVer palsu/berlebihan (release tag bloat) saat hanya melakukan penambahan atau refactoring unit test.
   - Negatif: Jika sebuah rilis fitur sengaja dirilis bersamaan dengan unit test, setidaknya satu file non-test (`*.go` implementasi atau modul) harus terubah agar tag release terpicu.
+
+---
+
+## ADR-012: Defensive Nil-Check for Device Container in Save and Delete Operations
+
+- **Status**: Accepted
+- **Date**: 2026-10-19
+- **Source**: CI regression failure analysis (CI job 117974312627 / commit `0cd2e75`) & commit `0631037`
+- **Context**: Pada pengujian unit test dan mock socket harness, instance `store.Device` sering kali diinstansiasi secara in-memory tanpa underlying `DeviceContainer` database (`device.Container == nil`). Ketika event kegagalan koneksi atau logged-out terpicu secara asinkron dari antrean (`handlerQueueLoop`), method `device.Delete(ctx)` atau `device.Save(ctx)` dipanggil, mengakibatkan runtime panic SIGSEGV (nil pointer dereference) saat runtime goroutine scheduler (khususnya pada Go 1.27) mengeksekusi method tersebut.
+- **Decision**:
+  1. Menambahkan pengecekan defensif `if device == nil || device.Deleted` di awal pemanggilan `Save()` dan `Delete()`.
+  2. Menambahkan pemeriksaan `if device.Container == nil { return nil }` di `Save()` dan `if device.Container != nil` sebelum memanggil `device.Container.DeleteDevice(ctx, device)` di `Delete()`.
+  3. Memastikan pembersihan field in-memory (`device.ID = nil`, `device.Deleted = true`, `SetAllStores(&NoopStore{ErrDeviceDeleted})`) tetap berjalan aman meski tanpa storage container aktif.
+- **Consequences**:
+  - Positif: Mencegah race/panic crash fatal di lingkungan test maupun saat client diinisialisasi tanpa container database aktif, memastikan kestabilan lintas runtime Go 1.26 dan Go 1.27.
+  - Negatif: Operasi `Save` dan `Delete` pada standalone `store.Device` (tanpa database backing) menjadi no-op silently tanpa mengembalikan error penyimpanan database.

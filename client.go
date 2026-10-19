@@ -164,7 +164,8 @@ type Client struct {
 	// If it returns false, the accepting will be cancelled and the retry receipt will be ignored.
 	PreRetryCallback func(receipt *events.Receipt, id types.MessageID, retryCount int, msg *waE2E.Message) bool
 
-	sendIQHook func(ctx context.Context, query infoQuery) (*waBinary.Node, error)
+	sendIQHook   func(ctx context.Context, query infoQuery) (*waBinary.Node, error)
+	sendNodeHook func(ctx context.Context, node waBinary.Node) error
 	// Should whatsmeow store recently sent messages in the database so that retry receipts can be accepted
 	// even if the process is restarted? If false, only the in-memory cache and GetMessageForRetry will be used.
 	UseRetryMessageStore bool
@@ -990,6 +991,9 @@ func (cli *Client) sendNodeAndGetData(ctx context.Context, node waBinary.Node) (
 }
 
 func (cli *Client) sendNode(ctx context.Context, node waBinary.Node) error {
+	if cli.sendNodeHook != nil {
+		return cli.sendNodeHook(ctx, node)
+	}
 	_, err := cli.sendNodeAndGetData(ctx, node)
 	return err
 }
