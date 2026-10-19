@@ -104,20 +104,31 @@ jobs:
           command -v protoc-gen-go-grpc >/dev/null 2>&1 || go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
           command -v goimports >/dev/null 2>&1 || go install golang.org/x/tools/cmd/goimports@latest
           command -v staticcheck >/dev/null 2>&1 || go install honnef.co/go/tools/cmd/staticcheck@latest
+          command -v gotestsum >/dev/null 2>&1 || go install gotest.tools/gotestsum@latest
 
       - name: Build
         run: go build -v ./...
 
-      - name: Test
-        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Test (with JUnit report)
+        run: gotestsum --junitfile junit.xml --format testname -- -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-      - name: Upload coverage reports to Codecov
+      - name: Upload coverage reports and test results to Codecov
         uses: codecov/codecov-action@v5
+        if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: PakaiWA/whatsmeow
+          files: coverage.txt
           flags: go-${{ matrix.go-version }}
           name: go-${{ matrix.go-version }}
+
+      - name: Upload test results to Codecov Test Analytics
+        uses: codecov/test-results-action@v1
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: junit.xml
+          flags: go-${{ matrix.go-version }}
 
   release:
     name: SemVer Release (vMAJOR.MINOR.PATCH)

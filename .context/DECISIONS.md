@@ -205,3 +205,19 @@
 - **Consequences**:
   - Positif: Visibilitas coverage jauh lebih transparan dan granular di dashboard Codecov dan komentar PR, memudahkan pemantauan health per modul arsitektur.
   - Negatif: Setiap penambahan modul/direktori baru dianjurkan dipetakan ke komponen terkait di `.codecov.yml`.
+
+---
+
+## ADR-014: Implementation of Go Test Analytics and JUnit Reporting Pipeline
+
+- **Status**: Accepted
+- **Date**: 2026-10-19
+- **Source**: Developer request & CI workflow enhancement (`.github/workflows/go.yaml`, `.gitignore`)
+- **Context**: Sebelumnya pengujian di CI hanya mencetak output standar `go test -v` dan mengunggah `coverage.txt`. Tim tidak memiliki analitik performa eksekusi tes per suite (durasi eksekusi, identifikasi tes terlambat/lambat, deteksi *flaky tests*, dan pelacakan kegagalan historis) secara terpusat di dashboard Codecov.
+- **Decision**:
+  1. **JUnit Exporter**: Menggunakan `gotestsum` (`gotest.tools/gotestsum@latest`) di pipeline CI untuk membungkus eksekusi `go test` dengan argumen `--junitfile junit.xml --format testname -- -race -coverprofile=coverage.txt -covermode=atomic ./...`.
+  2. **Codecov Test Analytics**: Mengintegrasikan `codecov/test-results-action@v1` dengan upload file `junit.xml` dan mapping flag matrix (`go-${{ matrix.go-version }}`).
+  3. **Repository Hygiene**: Menambahkan `junit.xml` ke `.gitignore` agar file artefak pengujian lokal tidak ter-commit ke git.
+- **Consequences**:
+  - Positif: CI menghasilkan telemetri lengkap per suite tes (durasi eksekusi, flaky tests, kegagalan granular) langsung di tab *Tests* Codecov dan GitHub Actions, tanpa membebani runtime binary aplikasi.
+  - Negatif: Memerlukan dependensi CLI tool `gotestsum` yang di-install saat setup runner CI.
