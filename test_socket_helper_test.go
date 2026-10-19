@@ -230,6 +230,7 @@ func setupMockSocketClient(t *testing.T) (*Client, func()) {
 	dev.NCTSalt = &mockNCTSaltStore{}
 
 	cli := NewClient(dev, waLog.Noop)
+	cli.EnableAutoReconnect = false
 	cli.socket = ns
 	cli.isLoggedIn.Store(true)
 

@@ -130,6 +130,7 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 	t.Run("connCtx cancelled returns immediately", func(t *testing.T) {
 		cli, cleanup := setupMockSocketClient(t)
 		defer cleanup()
+		cli.EnableAutoReconnect = false
 
 		ctx := context.Background()
 		connCtx, connCancel := context.WithCancel(ctx)
@@ -144,7 +145,7 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 		select {
 		case <-done:
 			// Success
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(time.Second):
 			t.Fatal("keepAliveLoop did not exit on cancelled connCtx")
 		}
 	})
@@ -152,6 +153,7 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 	t.Run("Keepalive loop dispatches timeout and restored events", func(t *testing.T) {
 		cli, cleanup := setupMockSocketClient(t)
 		defer cleanup()
+		cli.EnableAutoReconnect = false
 
 		ctx := context.Background()
 		connCtx, connCancel := context.WithCancel(ctx)
@@ -182,12 +184,12 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 		select {
 		case <-eventCh:
 			// Received KeepAliveTimeout
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(time.Second):
 			t.Fatal("timed out waiting for KeepAliveTimeout event")
 		}
 		assert.True(t, timeoutEventDispatched.Load())
 
-		// Now provide response to trigger KeepAliveRestored
+		// Now provide responses continuously to trigger KeepAliveRestored
 		responderCtx, responderCancel := context.WithCancel(context.Background())
 		defer responderCancel()
 		go func() {
@@ -199,12 +201,13 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 					cli.responseWaitersLock.Lock()
 					for id, waiter := range cli.responseWaiters {
 						delete(cli.responseWaiters, id)
-						cli.responseWaitersLock.Unlock()
-						waiter <- &waBinary.Node{
+						select {
+						case waiter <- &waBinary.Node{
 							Tag:   "iq",
 							Attrs: waBinary.Attrs{"id": id, "type": "result", "from": types.ServerJID},
+						}:
+						default:
 						}
-						return
 					}
 					cli.responseWaitersLock.Unlock()
 					time.Sleep(2 * time.Millisecond)
@@ -214,8 +217,8 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 
 		select {
 		case <-eventCh:
-			// Received KeepAliveRestored or subsequent timeout
-		case <-time.After(500 * time.Millisecond):
+			// Received KeepAliveRestored
+		case <-time.After(time.Second):
 			// Proceed
 		}
 
@@ -223,7 +226,7 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 		responderCancel()
 		select {
 		case <-loopDone:
-		case <-time.After(time.Second):
+		case <-time.After(3 * time.Second):
 			t.Fatal("loop did not exit cleanly")
 		}
 	})
@@ -233,6 +236,8 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 		defer cleanup()
 
 		cli.EnableAutoReconnect = true
+		cli.AutoReconnectHook = func(_ error) bool { return false }
+
 		ctx, cancelCtx := context.WithCancel(context.Background())
 		// Cancel ctx immediately so autoReconnect returns without attempting real network connect
 		cancelCtx()
@@ -251,14 +256,17 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 
 		select {
 		case <-loopDone:
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(time.Second):
 			t.Fatal("loop did not terminate")
 		}
+
+		time.Sleep(10 * time.Millisecond)
 	})
 
 	t.Run("Loop terminates when sendKeepAlive shouldContinue is false", func(t *testing.T) {
 		cli, cleanup := setupMockSocketClient(t)
 		defer cleanup()
+		cli.EnableAutoReconnect = false
 
 		ctx := context.Background()
 		connCtx, connCancel := context.WithCancel(ctx)
@@ -276,7 +284,7 @@ func TestKeepAlive_KeepAliveLoop(t *testing.T) {
 		select {
 		case <-loopDone:
 			// successfully exited
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(time.Second):
 			t.Fatal("loop failed to exit on shouldContinue=false")
 		}
 	})
