@@ -116,6 +116,8 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: PakaiWA/whatsmeow
+          flags: go-${{ matrix.go-version }}
+          name: go-${{ matrix.go-version }}
 
   release:
     name: SemVer Release (vMAJOR.MINOR.PATCH)

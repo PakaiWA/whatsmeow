@@ -178,3 +178,30 @@
 - **Consequences**:
   - Positif: Mencegah race/panic crash fatal di lingkungan test maupun saat client diinisialisasi tanpa container database aktif, memastikan kestabilan lintas runtime Go 1.26 dan Go 1.27.
   - Negatif: Operasi `Save` dan `Delete` pada standalone `store.Device` (tanpa database backing) menjadi no-op silently tanpa mengembalikan error penyimpanan database.
+
+---
+
+## ADR-013: Codecov Flags and Architectural Components Configuration
+
+- **Status**: Accepted
+- **Date**: 2026-10-19
+- **Source**: Developer request & Codecov configuration overhaul (`.codecov.yml`, `.github/workflows/go.yaml`)
+- **Context**: Sebelumnya repositori hanya mengunggah satu coverage profile tanpa diferensiasi runtime matrix (Go 1.26 vs Go 1.27) dan tanpa isolasi domain arsitektur. Hal ini menyulitkan identifikasi modul mana yang mengalami penurunan coverage pada setiap PR, serta tidak memberikan pelacakan granular per-komponen di PR comment Codecov.
+- **Decision**:
+  1. **Flags**: Mengelompokkan laporan coverage berdasarkan versi Go di GitHub Actions matrix (`go-1.26` dan `go-1.27`) menggunakan parameter `flags: go-${{ matrix.go-version }}` pada `codecov/codecov-action@v5` dengan `carryforward: true`.
+  2. **Components**: Mengelompokkan source code ke dalam 10 domain komponen arsitektur utama di `.codecov.yml`:
+     - `core_client`: Core Client & Connection (`client.go`, `handshake.go`, `connectionevents.go`, `keepalive.go`, dll.)
+     - `messaging_e2ee`: Messaging & Signal E2EE (`message.go`, `send.go`, `sendfb.go`, `armadillomessage.go`, `msgsecret.go`, dll.)
+     - `media_transfer`: Media Transfer & CDN (`upload.go`, `download.go`, `download-to-file.go`, `mediaconn.go`, `mediaretry.go`)
+     - `auth_pairing`: Authentication & Pairing (`pair.go`, `pair-code.go`, `pair-passkey.go`, `qrchan.go`, `prekeys.go`)
+     - `chat_features`: Chat Features & State (`group.go`, `newsletter.go`, `user.go`, `business.go`, `appstate.go`, dll.)
+     - `storage`: Storage & Persistence (`store/`)
+     - `network_socket`: Socket & Noise Layer (`socket/`)
+     - `binary_protocol`: WABinary Protocol (`binary/`)
+     - `types_events`: Types & Events (`types/`)
+     - `crypt_utilities`: Crypto & Log Utilities (`util/`, `appstate/lthash/`)
+  3. **PR Comment Layout**: Mengaktifkan layout komprehensif `header, diff, flags, components, files` pada bot komentar PR Codecov.
+  4. **Target Range**: Memperbarui visual threshold coverage range ke `70...90%` menyesuaikan realisasi statement coverage repositori yang telah melampaui 87%.
+- **Consequences**:
+  - Positif: Visibilitas coverage jauh lebih transparan dan granular di dashboard Codecov dan komentar PR, memudahkan pemantauan health per modul arsitektur.
+  - Negatif: Setiap penambahan modul/direktori baru dianjurkan dipetakan ke komponen terkait di `.codecov.yml`.

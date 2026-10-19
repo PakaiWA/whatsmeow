@@ -1,10 +1,15 @@
 # Codecov configuration
-# https://docs.codecov.com/docs/codecov-yaml
+# Reference: https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
 
 coverage:
   precision: 2
   round: down
-  range: "50...75"
+  range: "70...90"
   status:
     project:
       default:
@@ -15,8 +20,120 @@ coverage:
         target: auto
         threshold: 1%
 
-# Ignore auto-generated protobuf files and database schema migrations
+# Ignore auto-generated protobuf files, tooling, and database schema migrations
 ignore:
   - "proto"
   - "**/*.pb.go"
   - "store/sqlstore/upgrades"
+  - "cmd"
+  - "argo"
+
+# Flags: Mengelompokkan laporan coverage berdasarkan build matrix runtime Go di CI
+flags:
+  go-1.26:
+    paths:
+      - "**/*.go"
+    carryforward: true
+  go-1.27:
+    paths:
+      - "**/*.go"
+    carryforward: true
+
+# Comment Layout: Menyertakan ringkasan Diff, Flags, Components, dan Files pada PR
+comment:
+  layout: "header, diff, flags, components, files"
+  behavior: default
+  show_carryforward_flags: true
+
+# Components: Mengelompokkan cakupan source code berdasarkan domain arsitektur repositori
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        threshold: 1%
+  individual_components:
+    - component_id: "core_client"
+      name: "Core Client & Connection"
+      paths:
+        - "client.go"
+        - "handshake.go"
+        - "connectionevents.go"
+        - "keepalive.go"
+        - "cstoken.go"
+        - "internals.go"
+        - "internals_generate.go"
+        - "errors.go"
+
+    - component_id: "messaging_e2ee"
+      name: "Messaging & Signal E2EE"
+      paths:
+        - "message.go"
+        - "send.go"
+        - "sendfb.go"
+        - "armadillomessage.go"
+        - "msgsecret.go"
+        - "receipt.go"
+        - "retry.go"
+
+    - component_id: "media_transfer"
+      name: "Media Transfer & CDN"
+      paths:
+        - "upload.go"
+        - "download.go"
+        - "download-to-file.go"
+        - "mediaconn.go"
+        - "mediaretry.go"
+
+    - component_id: "auth_pairing"
+      name: "Authentication & Pairing"
+      paths:
+        - "pair.go"
+        - "pair-code.go"
+        - "pair-passkey.go"
+        - "qrchan.go"
+        - "prekeys.go"
+
+    - component_id: "chat_features"
+      name: "Chat Features & State"
+      paths:
+        - "group.go"
+        - "newsletter.go"
+        - "user.go"
+        - "business.go"
+        - "presence.go"
+        - "privacysettings.go"
+        - "broadcast.go"
+        - "call.go"
+        - "notification.go"
+        - "reportingtoken.go"
+        - "tctoken.go"
+        - "push.go"
+        - "update.go"
+        - "appstate.go"
+
+    - component_id: "storage"
+      name: "Storage & Persistence"
+      paths:
+        - "store/"
+
+    - component_id: "network_socket"
+      name: "Socket & Noise Layer"
+      paths:
+        - "socket/"
+
+    - component_id: "binary_protocol"
+      name: "WABinary Protocol"
+      paths:
+        - "binary/"
+
+    - component_id: "types_events"
+      name: "Types & Events"
+      paths:
+        - "types/"
+
+    - component_id: "crypt_utilities"
+      name: "Crypto & Log Utilities"
+      paths:
+        - "util/"
+        - "appstate/lthash/"
