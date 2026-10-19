@@ -27,16 +27,19 @@ import (
 )
 
 type mockContactStore struct {
-	pushNames     map[types.JID]string
-	businessNames map[types.JID]string
-	putPushErr    error
-	putBizErr     error
+	pushNames      map[types.JID]string
+	businessNames  map[types.JID]string
+	putPushErr     error
+	putBizErr      error
+	allContacts    map[types.JID]types.ContactInfo
+	getContactsErr error
 }
 
 func newMockContactStore() *mockContactStore {
 	return &mockContactStore{
 		pushNames:     make(map[types.JID]string),
 		businessNames: make(map[types.JID]string),
+		allContacts:   make(map[types.JID]types.ContactInfo),
 	}
 }
 
@@ -64,11 +67,21 @@ func (m *mockContactStore) PutBusinessName(_ context.Context, user types.JID, bu
 	return false, old, nil
 }
 
-func (m *mockContactStore) PutContactName(_ context.Context, _ types.JID, _, _ string) error {
+func (m *mockContactStore) PutContactName(_ context.Context, user types.JID, firstName, fullName string) error {
+	info := m.allContacts[user]
+	info.FirstName = firstName
+	info.FullName = fullName
+	m.allContacts[user] = info
 	return nil
 }
 
-func (m *mockContactStore) PutAllContactNames(_ context.Context, _ []store.ContactEntry) error {
+func (m *mockContactStore) PutAllContactNames(_ context.Context, contacts []store.ContactEntry) error {
+	for _, c := range contacts {
+		info := m.allContacts[c.JID]
+		info.FirstName = c.FirstName
+		info.FullName = c.FullName
+		m.allContacts[c.JID] = info
+	}
 	return nil
 }
 
@@ -77,11 +90,23 @@ func (m *mockContactStore) PutManyRedactedPhones(_ context.Context, _ []store.Re
 }
 
 func (m *mockContactStore) GetContact(_ context.Context, user types.JID) (types.ContactInfo, error) {
+	if c, ok := m.allContacts[user]; ok {
+		if c.PushName == "" {
+			c.PushName = m.pushNames[user]
+		}
+		if c.BusinessName == "" {
+			c.BusinessName = m.businessNames[user]
+		}
+		return c, nil
+	}
 	return types.ContactInfo{PushName: m.pushNames[user], BusinessName: m.businessNames[user]}, nil
 }
 
 func (m *mockContactStore) GetAllContacts(_ context.Context) (map[types.JID]types.ContactInfo, error) {
-	return nil, nil
+	if m.getContactsErr != nil {
+		return nil, m.getContactsErr
+	}
+	return m.allContacts, nil
 }
 
 type mockLIDStore struct {
