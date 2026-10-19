@@ -145,13 +145,13 @@ jobs:
             base_tag=$(git tag -l "v0.26.9-*" | sort -V | tail -n 1)
             echo "No pure SemVer tag found yet. Checking changes since base tag $base_tag..."
             if [ -n "$base_tag" ]; then
-              go_changes=$(git diff --name-only "${base_tag}"..HEAD -- "*.go")
+              go_changes=$(git diff --name-only "${base_tag}"..HEAD -- "*.go" ":(exclude)*_test.go")
             else
-              go_changes=$(git log -n 1 --name-only --pretty="" -- "*.go")
+              go_changes=$(git log -n 1 --name-only --pretty="" -- "*.go" ":(exclude)*_test.go")
             fi
 
             if [ -z "$go_changes" ]; then
-              echo "No .go file changes detected since $base_tag. Skipping release."
+              echo "No non-test .go file changes detected since $base_tag. Skipping release."
               exit 0
             fi
 
@@ -164,12 +164,12 @@ jobs:
             fi
           else
             echo "Latest SemVer tag: $latest_tag"
-            go_changes=$(git diff --name-only "${latest_tag}"..HEAD -- "*.go")
+            go_changes=$(git diff --name-only "${latest_tag}"..HEAD -- "*.go" ":(exclude)*_test.go")
             if [ -z "$go_changes" ]; then
-              echo "No .go file changes detected between $latest_tag and HEAD. Skipping release."
+              echo "No non-test .go file changes detected between $latest_tag and HEAD. Skipping release."
               exit 0
             fi
-            echo "Detected .go file changes:"
+            echo "Detected .go file changes (excluding tests):"
             echo "$go_changes"
 
             major=$(echo "$latest_tag" | sed -E 's/^v([0-9]+)\.([0-9]+)\.([0-9]+)$/\1/')
