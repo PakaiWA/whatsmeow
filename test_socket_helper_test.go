@@ -201,6 +201,7 @@ func setupMockSocketClient(t *testing.T) (*Client, func()) {
 	dev := &store.Device{
 		ID:             &types.JID{User: "12345", Server: types.DefaultUserServer},
 		IdentityKey:    keys.NewKeyPair(),
+		NoiseKey:       keys.NewKeyPair(),
 		RegistrationID: 1001,
 	}
 	dev.SignedPreKey = dev.IdentityKey.CreateSignedPreKey(1)
@@ -219,7 +220,12 @@ func setupMockSocketClient(t *testing.T) (*Client, func()) {
 	cli.isLoggedIn.Store(true)
 
 	cleanup := func() {
-		cli.socket.Stop(false, false)
+		cli.socketLock.RLock()
+		sock := cli.socket
+		cli.socketLock.RUnlock()
+		if sock != nil {
+			sock.Stop(false, false)
+		}
 		server.Close()
 	}
 
