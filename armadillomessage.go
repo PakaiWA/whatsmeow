@@ -72,7 +72,9 @@ func decodeFBArmadillo(transport *waMsgTransport.MessageTransport) (dec events.F
 	if err != nil {
 		return dec, fmt.Errorf("failed to unmarshal application: %w", err)
 	}
-	return DecodeFBApplication(application)
+	dec, err = DecodeFBApplication(application)
+	dec.Transport = transport
+	return dec, err
 }
 
 func DecodeFBApplication(application *waMsgApplication.MessageApplication) (dec events.FBMessage, err error) {
@@ -125,6 +127,7 @@ func decodeIGArmadillo(transport *waMsgTransport.MessageTransport) (dec events.F
 		return dec, fmt.Errorf("failed to unmarshal IG transport: %w", err)
 	}
 	dec.IGTransport = innerTransport
+	dec.Transport = transport
 	switch typedContent := innerTransport.GetTransportPayload().(type) {
 	case *instamadilloTransportPayload.TransportPayload_Add:
 		dec.Message = typedContent.Add
