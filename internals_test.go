@@ -91,7 +91,7 @@ func TestDangerousInternals_Delegates(t *testing.T) {
 	runSafe(func() { intCli.SendNode(ctx, waBinary.Node{}) })
 	runSafe(func() { intCli.DispatchEvent(nil) })
 	runSafe(func() { intCli.GetUnifiedSessionID() })
-	runSafe(func() { intCli.SendUnifiedSession() })
+	runSafe(func() { intCli.SendUnifiedSession(false) })
 	runSafe(func() { intCli.HandleStreamError(ctx, &waBinary.Node{Tag: "receipt", Attrs: waBinary.Attrs{}}) })
 	runSafe(func() { intCli.HandleIB(ctx, &waBinary.Node{Tag: "receipt", Attrs: waBinary.Attrs{}}) })
 	runSafe(func() { intCli.HandleConnectFailure(ctx, &waBinary.Node{Tag: "receipt", Attrs: waBinary.Attrs{}}) })
