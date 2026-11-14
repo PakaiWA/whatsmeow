@@ -87,6 +87,8 @@ type Client struct {
 	SynchronousAck             bool
 	EnableDecryptedEventBuffer bool
 	lastDecryptedBufferClear   time.Time
+	lastUnifiedSessionSend     time.Time
+	UnifiedSessionInterval     time.Duration
 
 	DisableLoginAutoReconnect bool
 
@@ -103,6 +105,7 @@ type Client struct {
 
 	appStateProc     *appstate.Processor
 	appStateSyncLock sync.Mutex
+	appStateBackoff  map[appstate.WAPatchName]time.Time
 
 	historySyncNotifications        chan *waE2E.HistorySyncNotification
 	historySyncHandlerStarted       atomic.Bool
@@ -199,6 +202,8 @@ type Client struct {
 
 	uniqueID  string
 	idCounter atomic.Uint64
+
+	lastKeepAliveID atomic.Pointer[string]
 
 	serverTimeOffset atomic.Int64
 
@@ -302,6 +307,7 @@ func NewClient(deviceStore *store.Device, log waLog.Logger) *Client {
 		sessionRecreateHistory: make(map[types.JID]time.Time),
 		GetMessageForRetry:     func(requester, to types.JID, id types.MessageID) *waE2E.Message { return nil },
 		appStateKeyRequests:    make(map[string]time.Time),
+		appStateBackoff:        make(map[appstate.WAPatchName]time.Time),
 
 		pendingPhoneRerequests: make(map[types.MessageID]context.CancelFunc),
 
@@ -537,7 +543,9 @@ func isRetryableConnectError(err error) bool {
 		}
 	}
 
-	return errors.Is(err, socket.ErrDialFailed)
+	return errors.Is(err, socket.ErrDialFailed) ||
+		errors.Is(err, ErrHandshakeTimeout) ||
+		errors.Is(err, socket.ErrSocketClosed)
 }
 
 func (cli *Client) ConnectContext(ctx context.Context) error {
@@ -751,14 +759,12 @@ func (cli *Client) unlockedDisconnect() {
 func (cli *Client) Logout(ctx context.Context) error {
 	if cli == nil {
 		return ErrClientIsNil
-	} else if cli.MessengerConfig != nil {
-		return errors.New("can't logout with Messenger credentials")
 	}
 	ownID := cli.getOwnID()
 	if ownID.IsEmpty() {
 		return ErrNotLoggedIn
 	}
-	_, err := cli.sendIQ(ctx, infoQuery{
+	query := infoQuery{
 		Namespace: "md",
 		Type:      "set",
 		To:        types.ServerJID,
@@ -769,7 +775,27 @@ func (cli *Client) Logout(ctx context.Context) error {
 				"reason": "user_initiated",
 			},
 		}},
-	})
+	}
+	if cli.MessengerConfig != nil {
+		var identityPub []byte
+		if cli.Store != nil && cli.Store.IdentityKey != nil {
+			identityPub = cli.Store.IdentityKey.Pub[:]
+		}
+		query = infoQuery{
+			Namespace: "fbid:devices",
+			Type:      "set",
+			To:        types.ServerJID,
+			Content: []waBinary.Node{{
+				Tag:   "remove",
+				Attrs: waBinary.Attrs{"id": int(ownID.Device)},
+				Content: []waBinary.Node{{
+					Tag:     "identity",
+					Content: identityPub,
+				}},
+			}},
+		}
+	}
+	_, err := cli.sendIQ(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error sending logout request: %w", err)
 	}
@@ -885,7 +911,9 @@ func (cli *Client) handleFrame(ctx context.Context, data []byte, queue chan *waB
 		cli.Log.Debugf("Errored frame hex: %s", hex.EncodeToString(decompressed))
 		return
 	}
-	cli.recvLog.Debugf("%s", node)
+	if !cli.isKeepAliveNode(node) {
+		cli.recvLog.Debugf("%s", node)
+	}
 	if node.Tag == "xmlstreamend" {
 		if !cli.isExpectedDisconnect() {
 			cli.Log.Warnf("Received stream end frame")
@@ -989,7 +1017,9 @@ func (cli *Client) sendNodeAndGetData(ctx context.Context, node waBinary.Node) (
 		return nil, fmt.Errorf("failed to marshal node: %w", err)
 	}
 
-	cli.sendLog.Debugf("%s", &node)
+	if !cli.isKeepAliveNode(&node) {
+		cli.sendLog.Debugf("%s", &node)
+	}
 	return payload, sock.SendFrame(ctx, payload)
 }
 
@@ -1058,7 +1088,7 @@ func (cli *Client) ParseWebMessage(chatJID types.JID, webMsg *waWeb.WebMessageIn
 				return nil, ErrNotLoggedIn
 			}
 		}
-	} else if chatJID.Server == types.DefaultUserServer || chatJID.Server == types.HiddenUserServer || chatJID.Server == types.NewsletterServer {
+	} else if chatJID.Server == types.DefaultUserServer || chatJID.Server == types.HiddenUserServer || chatJID.Server == types.NewsletterServer || chatJID.Server == types.BotServer {
 		info.Sender = chatJID
 	} else if webMsg.GetParticipant() != "" {
 		info.Sender, err = types.ParseJID(webMsg.GetParticipant())
@@ -1115,11 +1145,14 @@ func (cli *Client) getUnifiedSessionID() string {
 	return strconv.FormatInt(unifiedID, 10)
 }
 
-func (cli *Client) sendUnifiedSession() {
+func (cli *Client) sendUnifiedSession(checkLastSend bool) {
 	if cli == nil {
 		return
 	}
-
+	if checkLastSend && time.Since(cli.lastUnifiedSessionSend) < cli.UnifiedSessionInterval {
+		return
+	}
+	cli.lastUnifiedSessionSend = time.Now()
 	node := waBinary.Node{
 		Tag:   "ib",
 		Attrs: waBinary.Attrs{},

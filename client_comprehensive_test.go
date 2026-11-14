@@ -170,7 +170,7 @@ func TestClient_ConnectContext_And_AutoReconnect(t *testing.T) {
 		assert.False(t, nilCli.WaitForConnection(time.Millisecond))
 		nilCli.Disconnect()
 		nilCli.ResetConnection()
-		nilCli.sendUnifiedSession()
+		nilCli.sendUnifiedSession(false)
 	})
 
 	t.Run("InitialAutoReconnect triggers reconnect loop in background", func(t *testing.T) {
@@ -299,10 +299,14 @@ func TestClient_ConnectionLifecycle(t *testing.T) {
 		// Not logged in error
 		assert.ErrorIs(t, cli.Logout(ctx), ErrNotLoggedIn)
 
-		// Messenger credentials error
+		// Messenger credentials logout sends fbid:devices query
 		cli.Store.ID = &types.JID{User: "123", Server: types.DefaultUserServer}
 		cli.MessengerConfig = &MessengerConfig{}
-		assert.ErrorContains(t, cli.Logout(ctx), "can't logout with Messenger credentials")
+		cli.sendIQHook = func(_ context.Context, q infoQuery) (*waBinary.Node, error) {
+			assert.Equal(t, "fbid:devices", q.Namespace)
+			return nil, errors.New("fbid logout fail")
+		}
+		assert.ErrorContains(t, cli.Logout(ctx), "fbid logout fail")
 		cli.MessengerConfig = nil
 
 		// SendIQ error during logout

@@ -174,12 +174,13 @@ func TestFrameSocket_ConnectAndReadWritePump(t *testing.T) {
 	fs.URL = wsURL
 
 	disconnectReceived := make(chan struct{}, 1)
-	fs.OnDisconnect = func(_ context.Context, _ bool) {
+	onDisconnectFn := func(_ context.Context, _ bool) {
 		select {
 		case disconnectReceived <- struct{}{}:
 		default:
 		}
 	}
+	fs.onDisconnect.Store(&onDisconnectFn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
