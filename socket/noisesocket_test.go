@@ -52,8 +52,10 @@ func TestNoiseSocket(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Test fs.OnDisconnect proxy to disconnectHandler
-		fs.OnDisconnect(context.Background(), true)
+		// Test fs.onDisconnect proxy to disconnectHandler
+		if fn := fs.onDisconnect.Load(); fn != nil {
+			(*fn)(context.Background(), true)
+		}
 		select {
 		case remote := <-disconnectCalled:
 			assert.True(t, remote)
@@ -185,7 +187,7 @@ func TestNoiseSocket(t *testing.T) {
 
 		// First Stop with allowOnDisconnect=false
 		ns.Stop(true, false)
-		assert.Nil(t, fs.OnDisconnect)
+		assert.Nil(t, fs.onDisconnect.Load())
 
 		// Second Stop is idempotent
 		ns.Stop(true, true)
